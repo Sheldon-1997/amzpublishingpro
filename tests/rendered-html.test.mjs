@@ -1,0 +1,1193 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { socialProfileUrls } from "../app/business-data.ts";
+
+let workerPromise;
+
+async function getWorker() {
+  workerPromise ??= import(new URL(`../dist/server/index.js?test=${Date.now()}`, import.meta.url))
+    .then(({ default: worker }) => worker);
+  return workerPromise;
+}
+
+async function render(pathname = "/") {
+  return renderAbsolute(`http://localhost${pathname}`);
+}
+
+async function renderAbsolute(url, assetResponse, requestHeaders = {}) {
+  const worker = await getWorker();
+  return worker.fetch(
+    new Request(url, { headers: { accept: "text/html", ...requestHeaders } }),
+    {
+      ASSETS: {
+        fetch: async () => assetResponse ?? new Response("Not found", { status: 404 }),
+      },
+    },
+    {
+      waitUntil() {},
+      passThroughOnException() {},
+    },
+  );
+}
+
+test("server renders the AMZ Publishing Pro identity and canonical domain", async () => {
+  const response = await render("/");
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+
+  const html = await response.text();
+  assert.match(html, /From Manuscript to Published Book/);
+  assert.match(html, /AMZ Publishing Pro/);
+  assert.match(html, /amzpublishingpro\.com/);
+  assert.match(html, /info@amzpublishingpro\.com/);
+  assert.match(html, /909-293-9645/);
+  assert.doesNotMatch(html, /\(877\) 436-9143/);
+  assert.match(html, /3D cover concepts and full wraps/);
+  assert.doesNotMatch(html, /Amazon book publishing, made clear\./);
+  assert.doesNotMatch(html, /\d+ reference covers?/i);
+  assert.doesNotMatch(html, /Amazon Kindle (?:Pro|Service)/i);
+  assert.doesNotMatch(html, /amazonkindle(?:pro|service)\.(?:co|com)/i);
+});
+
+test("homepage presents one approved service description to people and search engines", async () => {
+  const approvedDescription =
+    "AMZ Publishing Pro is an independent book publishing services provider offering editing, cover design, formatting, and publishing setup for authors.";
+  const response = await render("/");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.ok(
+    html.includes(`<p class="hero-lede">${approvedDescription}</p>`),
+    "the approved description must be visible in the homepage introduction",
+  );
+  assert.ok(
+    html.includes(`<meta name="description" content="${approvedDescription}"/>`),
+    "the homepage meta description must use the approved wording",
+  );
+  assert.ok(
+    html.includes(`<meta property="og:description" content="${approvedDescription}"/>`),
+    "the Open Graph description must use the approved wording",
+  );
+  assert.ok(
+    html.includes(`<meta name="twitter:description" content="${approvedDescription}"/>`),
+    "the X card description must use the approved wording",
+  );
+
+  const jsonLd = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(jsonLd, "homepage should include business structured data");
+  const business = JSON.parse(jsonLd);
+  assert.equal(
+    business.description,
+    approvedDescription,
+    "business structured data must use the approved wording",
+  );
+  assert.equal(business["@type"], "Organization");
+  assert.equal(
+    business["@id"],
+    "https://amzpublishingpro.com/#organization",
+  );
+  assert.equal(
+    business.logo,
+    "https://amzpublishingpro.com/og.png",
+  );
+  assert.equal(business.email, "info@amzpublishingpro.com");
+  assert.deepEqual(socialProfileUrls, []);
+  assert.ok(!("sameAs" in business));
+  assert.ok(!("legalName" in business));
+});
+
+test("every canonical page aligns document, Open Graph, and X card metadata", async () => {
+  const routes = [
+    "/",
+    "/services",
+    "/book-publishing",
+    "/ghostwriting",
+    "/editing",
+    "/book-formatting",
+    "/cover-design",
+    "/author-brand-content",
+    "/book-marketing",
+    "/about",
+    "/portfolio",
+    "/genres",
+    "/how-it-works",
+    "/resources",
+    "/contact",
+    "/terms",
+    "/privacy",
+    "/ecommerce-store-setup",
+    "/ecommerce-marketing",
+    "/book-ad-campaigns",
+    "/keyword-research",
+  ];
+
+  for (const route of routes) {
+    const response = await render(route);
+    assert.equal(response.status, 200, `${route} should return 200`);
+    const html = await response.text();
+    const content = (pattern, label) => {
+      const value = html.match(pattern)?.[1];
+      assert.ok(value, `${route} should render ${label}`);
+      return value;
+    };
+
+    const documentTitle = content(/<title>([^<]+)<\/title>/, "a document title");
+    const description = content(
+      /<meta name="description" content="([^"]+)"\/?>/,
+      "a meta description",
+    );
+
+    assert.equal(
+      content(/<meta property="og:title" content="([^"]+)"\/?>/, "an Open Graph title"),
+      documentTitle,
+      `${route} Open Graph title should match its document title`,
+    );
+    assert.equal(
+      content(/<meta property="og:description" content="([^"]+)"\/?>/, "an Open Graph description"),
+      description,
+      `${route} Open Graph description should match its meta description`,
+    );
+    assert.equal(
+      content(/<meta property="og:image" content="([^"]+)"\/?>/, "an Open Graph image"),
+      "https://amzpublishingpro.com/og.png",
+      `${route} should preserve the approved Open Graph image`,
+    );
+    assert.equal(
+      content(/<meta name="twitter:card" content="([^"]+)"\/?>/, "an X card type"),
+      "summary_large_image",
+      `${route} should preserve the large X card`,
+    );
+    assert.equal(
+      content(/<meta name="twitter:title" content="([^"]+)"\/?>/, "an X card title"),
+      documentTitle,
+      `${route} X card title should match its document title`,
+    );
+    assert.equal(
+      content(/<meta name="twitter:description" content="([^"]+)"\/?>/, "an X card description"),
+      description,
+      `${route} X card description should match its meta description`,
+    );
+    assert.equal(
+      content(/<meta name="twitter:image" content="([^"]+)"\/?>/, "an X card image"),
+      "https://amzpublishingpro.com/og.png",
+      `${route} should preserve the approved X card image`,
+    );
+  }
+});
+
+test("shared footer displays the independent publishing services trust statement", async () => {
+  const trustStatement =
+    /Independent publishing services for authors\. We never request publishing platform passwords, login credentials, or one-time codes\./;
+  const independenceStatement =
+    /AMZ Publishing Pro is an independent company\. It is not affiliated with, endorsed by, or sponsored by Amazon, Kindle, KDP, or any other retailer or publishing platform\./;
+
+  for (const route of ["/", "/services", "/contact", "/privacy", "/terms"]) {
+    const response = await render(route);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, trustStatement);
+    assert.match(html, independenceStatement);
+  }
+});
+
+test("project inquiry warns visitors never to share platform credentials", async () => {
+  const warning = /We never request publishing platform passwords, login credentials, or one-time codes\./;
+
+  for (const route of ["/", "/contact"]) {
+    const response = await render(route);
+    assert.equal(response.status, 200, `${route} should return 200`);
+    assert.match(await response.text(), warning, `${route} should display the credential warning`);
+  }
+});
+
+test("terms explain brand independence and author account control", async () => {
+  const response = await render("/terms");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, />Brand Independence</);
+  assert.match(
+    html,
+    /AMZ Publishing Pro provides editing, cover design, formatting, and publishing setup directly to authors\./,
+  );
+  assert.match(
+    html,
+    /It is not affiliated with, endorsed by, or sponsored by Amazon, Kindle, KDP, or any other retailer or publishing platform\./,
+  );
+  assert.match(
+    html,
+    /Authors retain control of their accounts, credentials, publishing records, and royalty access\./,
+  );
+});
+
+test("services use canonical routes and publishing terminology", async () => {
+  const response = await render("/");
+  const html = await response.text();
+
+  assert.match(html, /href="\/author-brand-content"/);
+  assert.match(html, />Author Brand Content</);
+  assert.match(html, />Retail Platform Brand Content</);
+  assert.match(html, />eBook</);
+  assert.doesNotMatch(html, /href="\/author-brand-a-plus"/);
+  assert.doesNotMatch(html, />Author Brand &amp; A\+/);
+  assert.doesNotMatch(html, /A\+ Brand Content|Kindle formatting|Kindle eBook preparation/);
+
+  const source = await readFile(new URL("../app/site-data.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /A\+ Brand Content|Kindle formatting|Kindle eBook preparation/);
+});
+
+test("canonical service routes render their self-referential canonicals", async () => {
+  for (const route of ["/author-brand-content", "/book-ad-campaigns"]) {
+    const response = await render(route);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.ok(
+      html.includes(
+        'rel="canonical" href="https://amzpublishingpro.com' + route + '"',
+      ),
+    );
+  }
+});
+
+test("homepage phone actions use one disclosed number everywhere", async () => {
+  const response = await render("/");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  const expectedPhoneHref = "tel:+19092939645";
+  const phoneHrefs = [...html.matchAll(/href="(tel:[^"]+)"/g)].map((match) => match[1]);
+
+  assert.ok(phoneHrefs.length >= 4, "homepage should expose every primary call action");
+  assert.deepEqual(
+    [...new Set(phoneHrefs)],
+    [expectedPhoneHref],
+    "every call action must dial the same number shown to visitors",
+  );
+  assert.match(
+    html,
+    /href="tel:\+19092939645"[^>]*>Call (?:<!-- -->)?909-293-9645<\/a>/,
+  );
+  const jsonLd = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(jsonLd, "homepage should include business structured data");
+  assert.equal(
+    JSON.parse(jsonLd).telephone,
+    "+19092939645",
+    "structured data must use the same disclosed phone number",
+  );
+  assert.match(
+    html,
+    /href="mailto:info@amzpublishingpro\.com"[^>]*>Email Us<\/a>/,
+  );
+  assert.doesNotMatch(html, /href="(?:sms|smsto):/i);
+  assert.doesNotMatch(html, /\+18774369143|\(877\) 436-9143/);
+
+  const termsResponse = await render("/terms");
+  assert.equal(termsResponse.status, 200);
+  const termsHtml = await termsResponse.text();
+  assert.match(termsHtml, /909-293-9645/);
+  assert.doesNotMatch(termsHtml, /\(877\) 436-9143/);
+});
+
+test("contact and legal pages publish the current business address and advertising privacy status", async () => {
+  const address = "800 Town &amp; Country Blvd, Suite 500, Houston, TX 77024";
+
+  for (const route of ["/", "/contact", "/privacy", "/terms"]) {
+    const response = await render(route);
+    assert.equal(response.status, 200, `${route} should return 200`);
+    assert.equal(response.headers.get("set-cookie"), null, `${route} should not set a tracking cookie`);
+
+    const html = await response.text();
+    assert.match(html, new RegExp(address), `${route} should display the current business address`);
+    assert.doesNotMatch(html, /connect\.facebook\.net|\bfbq\s*\(|googletagmanager|\bgtag\s*\(/i);
+
+    if (route === "/") {
+      const jsonLd = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+      assert.ok(jsonLd, "homepage should include business structured data");
+      const business = JSON.parse(jsonLd);
+      assert.deepEqual(business.address, {
+        "@type": "PostalAddress",
+        streetAddress: "800 Town & Country Blvd, Suite 500",
+        addressLocality: "Houston",
+        addressRegion: "TX",
+        postalCode: "77024",
+        addressCountry: "US",
+      });
+    }
+
+    if (route === "/privacy") {
+      assert.match(html, /Effective November 27, 2026/);
+      assert.match(html, />Advertising</);
+      assert.match(html, /does not currently use the Meta Pixel, Conversions API, analytics cookies, or advertising cookies/);
+      assert.match(html, /Any cookie set for that purpose is strictly necessary/);
+      assert.doesNotMatch(html, /__cf_bm/);
+    }
+  }
+});
+
+test("genre links preserve the requested portfolio filter", async () => {
+  for (const route of ["/", "/genres"]) {
+    const response = await render(route);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /href="\/?\?genre=Romance#portfolio"/);
+    assert.match(html, /href="\/?\?genre=Self%20Help%20%26%20Wellness#portfolio"/);
+  }
+});
+
+test("rendered controls expose keyboard complete navigation and motion choices", async () => {
+  const response = await render("/");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+
+  assert.match(html, /id="mobile-navigation"[^>]*role="dialog"[^>]*aria-modal="true"/);
+  assert.match(html, /aria-label="Pause manuscript to book animation"/);
+  assert.match(html, /aria-label="Pause cover gallery"/);
+  assert.match(html, /aria-label="Open A Quiet Street sample cover"/);
+});
+
+test("homepage hero animates a publishing cabinet from manuscript to published book", async () => {
+  const response = await render("/");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+
+  assert.match(
+    html,
+    /id="hero-publishing-portal"[^>]*role="region"[^>]*data-cover-count="10"/,
+  );
+  assert.match(html, /id="hero-publishing-motion"/);
+  assert.match(html, /aria-controls="hero-publishing-motion"/);
+  assert.match(html, /data-visual="publishing-cabinet"/);
+  assert.match(html, /class="publishing-cabinet-scene"/);
+  assert.match(html, /src="\/hero-publishing\/cabinet-shell\.webp"/);
+  assert.match(html, /src="\/hero-publishing\/manuscript-stack\.webp"/);
+  assert.match(html, /src="\/hero-publishing\/finished-book-body\.webp"/);
+  assert.match(html, /class="cabinet-status cabinet-status-processing"[^>]*>In Process</);
+  assert.match(html, /class="cabinet-status cabinet-status-published"[^>]*>Published</);
+  assert.match(html, /data-active-genre="Fiction"/);
+  assert.match(html, /class="published-book-cover" src="\/sample-covers\/fiction-01\.webp"/);
+  assert.match(html, /alt="A Quiet Street sample cover"/);
+  assert.match(html, />Finished Book</);
+  assert.match(
+    html,
+    /A manuscript enters the cabinet, the processing light turns yellow, and the published book exits as the light turns green\. The sequence repeats across ten sample covers\./,
+  );
+  assert.doesNotMatch(html, /publishing-binder|binder-board|binder-cloth-spine/);
+  assert.doesNotMatch(html, /\/(?:hero-books|books-expanded)\//);
+});
+
+test("publishing cabinet uses photographed lamp states and masked motion tracks", async () => {
+  const response = await render("/");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(
+    html,
+    /class="cabinet-lamp-state cabinet-lamp-processing"[^>]*src="\/hero-publishing\/lamp-processing\.webp"/,
+  );
+  assert.match(
+    html,
+    /class="cabinet-lamp-state cabinet-lamp-published"[^>]*src="\/hero-publishing\/lamp-published\.webp"/,
+  );
+  assert.match(html, /class="cabinet-manuscript-track"/);
+  assert.match(html, /data-hero-mask="input-aperture"/);
+  assert.equal(
+    (html.match(/data-input-region="inside-slot"/g) ?? []).length,
+    1,
+    "the manuscript needs one rendering clipped to the input aperture",
+  );
+  assert.equal(
+    (html.match(/data-input-region="exterior"/g) ?? []).length,
+    1,
+    "the manuscript needs one rendering clipped to the tray outside the cabinet",
+  );
+  assert.equal(
+    (html.match(/data-output-region="inside-slot"/g) ?? []).length,
+    1,
+    "the finished book needs one aperture-clipped rendering",
+  );
+  assert.equal(
+    (html.match(/data-output-region="exterior"/g) ?? []).length,
+    1,
+    "the finished book needs one exterior rendering below the aperture",
+  );
+  assert.match(html, /class="published-output-track"/);
+  assert.doesNotMatch(html, /<span class="cabinet-lamp-(?:processing|published)"/);
+
+  const trackRule = css.match(/\.cabinet-manuscript-track\s*\{([^}]*)\}/)?.[1] ?? "";
+  const manuscriptRule = css.match(/\.cabinet-manuscript\s*\{([^}]*)\}/)?.[1] ?? "";
+  const trackWidth = Number(trackRule.match(/width:\s*([\d.]+)%/)?.[1]);
+  const trackHeight = Number(trackRule.match(/height:\s*([\d.]+)%/)?.[1]);
+  const manuscriptWidth = Number(manuscriptRule.match(/width:\s*([\d.]+)%/)?.[1]);
+  const trackHeightInSceneWidths = (trackHeight / 100) * (2 / 3);
+  const manuscriptHeightInSceneWidths =
+    (trackWidth / 100) * (manuscriptWidth / 100) * (427 / 640);
+
+  assert.ok(
+    manuscriptHeightInSceneWidths < trackHeightInSceneWidths,
+    "the manuscript canvas must fit vertically inside its input track",
+  );
+
+  const manuscriptMotion = css.match(/@keyframes cabinet-manuscript-cycle\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+  const manuscriptIngress = manuscriptMotion.match(
+    /34%\s*\{[^}]*translate3d\(\s*([\d.-]+)%[^)]*\)[^}]*scale\(\s*([\d.]+)\s*\)/,
+  );
+  assert.ok(manuscriptIngress, "the manuscript needs a measurable fully-inside keyframe");
+  const ingressTranslateX = Number(manuscriptIngress?.[1]);
+  const ingressScale = Number(manuscriptIngress?.[2]);
+  const manuscriptRightEdge =
+    (trackWidth / 100) * (manuscriptWidth / 100) *
+    (ingressTranslateX / 100 + ingressScale);
+  assert.ok(
+    manuscriptRightEdge <= 0.36,
+    "the manuscript must fit inside the left bay before it disappears instead of hitting a track edge",
+  );
+
+  const inputSlotRule = css.match(/\.cabinet-manuscript-slot\s*\{([^}]*)\}/)?.[1] ?? "";
+  const inputExteriorRule = css.match(/\.cabinet-manuscript-exterior\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(inputSlotRule, /clip-path:/, "the inside manuscript rendering must be clipped to the input aperture");
+  assert.match(inputExteriorRule, /clip-path:/, "the outside manuscript rendering must be clipped to the tray");
+
+  const outputSlotRule = css.match(/\.published-output-slot\s*\{([^}]*)\}/)?.[1] ?? "";
+  const outputExteriorRule = css.match(/\.published-output-exterior\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(outputSlotRule, /clip-path:/, "the inside book rendering must be clipped to the output aperture");
+  assert.match(outputExteriorRule, /clip-path:/, "the exterior book rendering must be clipped below the output aperture");
+
+  const outputSlotCoordinates = [...outputSlotRule.matchAll(/([\d.]+)%/g)]
+    .map((match) => Number(match[1]));
+  const outputExteriorCoordinates = [...outputExteriorRule.matchAll(/([\d.]+)%/g)]
+    .map((match) => Number(match[1]));
+  assert.deepEqual(
+    outputSlotCoordinates,
+    [20.5, 77.6, 77.6, 18.1, 20.5, 18.1],
+    "the inside output mask must stay aligned to the cabinet aperture",
+  );
+  assert.deepEqual(
+    outputExteriorCoordinates,
+    [29.3],
+    "the exterior output mask must begin below the cabinet lower rail",
+  );
+
+  const outputRegionRule = css.match(/\.published-output-region\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(
+    outputRegionRule,
+    /top:\s*48%;\s*right:\s*-5%;\s*bottom:\s*-70%;\s*left:\s*56%/,
+    "both output renderings must retain the same cabinet-relative region",
+  );
+
+  const outputRule = css.match(/\.published-output\s*\{([^}]*)\}/)?.[1] ?? "";
+  const outputTrackRule = css.match(/\.published-output-track\s*\{([^}]*)\}/)?.[1] ?? "";
+  const publishedBookRule = css.match(/\.published-book\s*\{([^}]*)\}/)?.[1] ?? "";
+  const bookMotion = css.match(/@keyframes cabinet-book-(?:emerges|motion)\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+  const bookHorizontalTranslations = [...bookMotion.matchAll(/translate3d\(\s*([\d.-]+)%/g)]
+    .map((match) => Number(match[1]));
+  const bookMotionFrames = new Map();
+  for (const frameMatch of bookMotion.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const transform = frameMatch[2].match(
+      /translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%,\s*0\)\s*scale\(\s*([\d.]+)\s*\)/,
+    );
+    if (!transform) continue;
+    for (const selector of frameMatch[1].split(",")) {
+      bookMotionFrames.set(selector.trim(), {
+        x: Number(transform[1]),
+        y: Number(transform[2]),
+        scale: Number(transform[3]),
+      });
+    }
+  }
+  const outputBottom = Number(outputRule.match(/bottom:\s*([\d.]+)%/)?.[1] ?? 0);
+  const positiveBookTranslations = [...bookMotion.matchAll(/translate3d\([^,]+,\s*([\d.]+)%/g)]
+    .map((match) => Number(match[1]));
+  const lowestBookTranslation = Math.max(0, ...positiveBookTranslations);
+
+  assert.ok(bookHorizontalTranslations.length > 0, "the finished book needs a measurable exit path");
+  assert.ok(
+    bookHorizontalTranslations.every((translation) => translation === 0),
+    "the finished book must travel straight through the output opening without a sideways seam jump",
+  );
+  const smallOrigin = bookMotionFrames.get("64%");
+  const travelFrame = bookMotionFrames.get("70%");
+  const hiddenTravelFrame = bookMotionFrames.get("76%");
+  const clearanceFrame = bookMotionFrames.get("82%");
+  const firstExpansion = bookMotionFrames.get("88%");
+  const settledBook = bookMotionFrames.get("94%");
+  const heldBook = bookMotionFrames.get("97%");
+  assert.deepEqual(
+    smallOrigin,
+    { x: 0, y: -78, scale: 0.48 },
+    "the finished book must begin at the exact small centered origin",
+  );
+  assert.ok(
+    travelFrame && hiddenTravelFrame && clearanceFrame && firstExpansion && settledBook && heldBook,
+    "the exit needs travel, clearance, expansion, settled, and held frames",
+  );
+  assert.ok(
+    [smallOrigin, travelFrame, hiddenTravelFrame, clearanceFrame].every((frame) => frame.scale === smallOrigin.scale),
+    "the finished book must retain its small size until it clears the cabinet rail",
+  );
+  assert.ok(
+    smallOrigin.y < travelFrame.y && travelFrame.y < hiddenTravelFrame.y && hiddenTravelFrame.y < clearanceFrame.y,
+    "the small book must move smoothly downward through the output opening",
+  );
+  const expansionFrames = [clearanceFrame, firstExpansion, settledBook];
+  assert.ok(
+    expansionFrames.every((frame, index) =>
+      index === 0 || (frame.scale > expansionFrames[index - 1].scale && frame.y > expansionFrames[index - 1].y)),
+    "every active exit frame must move downward and expand without stalling or reversing",
+  );
+  assert.deepEqual(
+    settledBook,
+    { x: 0, y: -9, scale: 1 },
+    "the finished book must reach the intended full size below the opening",
+  );
+  assert.deepEqual(
+    heldBook,
+    settledBook,
+    "the finished book must hold the same settled geometry before the outro",
+  );
+  assert.match(
+    outputRule,
+    /position:\s*absolute;\s*inset:\s*0;\s*bottom:\s*10%;\s*display:\s*flex;\s*align-items:\s*flex-end;\s*justify-content:\s*center/,
+    "the output layout must keep the book centered on the fixed aperture baseline",
+  );
+  assert.equal(outputBottom, 10, "the extended output region must retain its verified ten percent baseline inset");
+  assert.match(
+    publishedBookRule,
+    /position:\s*relative;\s*width:\s*min\(260px,\s*100%\);\s*aspect-ratio:\s*1(?:\s*\/\s*1)?;\s*margin:\s*0/,
+    "the book body must retain the base dimensions used by the output-aperture geometry",
+  );
+  assert.doesNotMatch(
+    publishedBookRule,
+    /(?:^|;)\s*(?:top|right|bottom|left):/,
+    "the centered book body must not gain an independent positional offset",
+  );
+  assert.match(
+    publishedBookRule,
+    /transform:\s*rotateY\(-5deg\)\s*rotateZ\(\.5deg\)/,
+    "the book body may keep its approved perspective but no independent translation or scale",
+  );
+  const openingFraction = outputSlotCoordinates[3] / 100;
+  const transformedBookBaseline = 1 - (outputBottom / 100) * smallOrigin.scale + (smallOrigin.y / 100);
+  assert.ok(
+    transformedBookBaseline < openingFraction,
+    "the first visible book baseline must remain fully inside the output aperture before moving down",
+  );
+  const reducedMotionRule = css.match(
+    /\.hero-books\.is-reduced-motion \.published-output-track\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
+  const reducedMotionTransform = reducedMotionRule.match(
+    /translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%/,
+  );
+  const reducedMotionX = Number(reducedMotionTransform?.[1]);
+  const reducedMotionY = Number(reducedMotionTransform?.[2]);
+  assert.ok(
+    Number.isFinite(reducedMotionX) && Math.abs(reducedMotionX) <= 1,
+    "reduced motion must use the same centered finished book position",
+  );
+  assert.equal(
+    reducedMotionY,
+    settledBook.y,
+    "reduced motion must use the same vertically settled finished book position",
+  );
+  const mediaReducedMotionRule = css.match(
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.hero-books \.published-output-track\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
+  const mediaReducedMotionTransform = mediaReducedMotionRule.match(
+    /translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%/,
+  );
+  const mediaReducedMotionX = Number(mediaReducedMotionTransform?.[1]);
+  const mediaReducedMotionY = Number(mediaReducedMotionTransform?.[2]);
+  assert.ok(
+    Number.isFinite(mediaReducedMotionX) && Math.abs(mediaReducedMotionX) <= 1,
+    "the operating-system reduced-motion fallback must keep the finished book centered",
+  );
+  assert.equal(
+    mediaReducedMotionY,
+    settledBook.y,
+    "the operating-system reduced-motion fallback must use the settled vertical position",
+  );
+  assert.ok(
+    outputBottom >= lowestBookTranslation,
+    "the finished book baseline must offset its lowest visible translation so the cover is not clipped",
+  );
+  assert.match(
+    outputTrackRule,
+    /cabinet-book-visibility[^;]*steps\(1,\s*end\)/,
+    "finished book visibility must switch cleanly instead of fading over the cabinet",
+  );
+
+  const heroBooksRule = css.match(/\.hero-books\s*\{([^}]*)\}/)?.[1] ?? "";
+  const cycleDuration = Number(heroBooksRule.match(/--hero-cycle-duration:\s*([\d.]+)s/)?.[1]);
+  assert.ok(cycleDuration > 0 && cycleDuration <= 7, "the full publishing cycle must finish within seven seconds");
+});
+
+test("finished book clears the cabinet rail before it expands", async () => {
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const heroInnerRule = css.match(/\.hero-inner\s*\{([^}]*)\}/)?.[1] ?? "";
+  const heroBooksRule = css.match(/\.hero-books\s*\{([^}]*)\}/)?.[1] ?? "";
+  const sceneRule = css.match(/\.publishing-cabinet-scene\s*\{([^}]*)\}/)?.[1] ?? "";
+  const outputRegionRule = css.match(/\.published-output-region\s*\{([^}]*)\}/)?.[1] ?? "";
+  const outputSlotRule = css.match(/\.published-output-slot\s*\{([^}]*)\}/)?.[1] ?? "";
+  const outputExteriorRule = css.match(/\.published-output-exterior\s*\{([^}]*)\}/)?.[1] ?? "";
+  const outputRule = css.match(/\.published-output\s*\{([^}]*)\}/)?.[1] ?? "";
+  const publishedBookRule = css.match(/\.published-book\s*\{([^}]*)\}/)?.[1] ?? "";
+  const bookMotion = css.match(/@keyframes cabinet-book-motion\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+
+  const sceneWidth = Number(sceneRule.match(/width:\s*min\(\s*([\d.]+)px/)?.[1]);
+  const sceneTop = Number(sceneRule.match(/top:\s*([\d.]+)px/)?.[1]);
+  const sceneAspect = sceneRule.match(/aspect-ratio:\s*([\d.]+)\s*\/\s*([\d.]+)/);
+  const heroBooksHeight = Number(heroBooksRule.match(/min-height:\s*([\d.]+)px/)?.[1]);
+  const heroPadding = heroInnerRule.match(/padding:\s*([\d.]+)px\s+0\s+([\d.]+)px/);
+  const heroBottomPadding = Number(heroPadding?.[2]);
+  const outputTop = Number(outputRegionRule.match(/top:\s*([\d.-]+)%/)?.[1]);
+  const outputBottomEdge = Number(outputRegionRule.match(/bottom:\s*([\d.-]+)%/)?.[1]);
+  const outputBaselineInset = Number(outputRule.match(/bottom:\s*([\d.]+)%/)?.[1]);
+  const bookSize = Number(publishedBookRule.match(/width:\s*min\(\s*([\d.]+)px/)?.[1]);
+  const openingCoordinates = [...outputSlotRule.matchAll(/([\d.]+)%/g)].map((match) => Number(match[1]));
+  const openingSeam = openingCoordinates[3] / 100;
+  const outputRail = Number(outputExteriorRule.match(/clip-path:\s*inset\(\s*([\d.]+)%/)?.[1]) / 100;
+
+  assert.ok(
+    [sceneWidth, sceneTop, heroBooksHeight, heroBottomPadding, outputTop, outputBottomEdge, outputBaselineInset, bookSize, openingSeam, outputRail]
+      .every(Number.isFinite) && sceneAspect,
+    "the exit geometry needs measurable scene, mask, baseline, and book dimensions",
+  );
+  const hiddenTravelZone = outputRail - openingSeam;
+  assert.ok(
+    hiddenTravelZone >= 0.1 && hiddenTravelZone <= 0.14,
+    "the exterior output mask must follow the visible cabinet lower rail without leaving a detached gap",
+  );
+
+  const sceneHeight = sceneWidth * (Number(sceneAspect[2]) / Number(sceneAspect[1]));
+  const outputRegionHeight = sceneHeight * (1 - outputTop / 100 - outputBottomEdge / 100);
+  const bookHeightInOutputRegions = bookSize / outputRegionHeight;
+  const baselineInset = outputBaselineInset / 100;
+  const frames = [];
+
+  for (const frameMatch of bookMotion.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const transform = frameMatch[2].match(
+      /translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%,\s*0\)\s*scale\(\s*([\d.]+)\s*\)/,
+    );
+    if (!transform) continue;
+    for (const selector of frameMatch[1].split(",")) {
+      frames.push({
+        percent: Number(selector.trim().replace("%", "")),
+        y: Number(transform[2]) / 100,
+        scale: Number(transform[3]),
+      });
+    }
+  }
+  frames.sort((a, b) => a.percent - b.percent);
+
+  const visibleFrames = frames.filter((frame) => frame.percent >= 60 && frame.percent <= 96);
+  const smallScale = Math.min(...visibleFrames.map((frame) => frame.scale));
+  const firstExpansionIndex = visibleFrames.findIndex((frame) => frame.scale > smallScale + 0.001);
+  const clearanceFrame = visibleFrames[firstExpansionIndex - 1];
+  const firstExpansionFrame = visibleFrames[firstExpansionIndex];
+  const bookTop = (frame) =>
+    1 - frame.scale * (baselineInset + bookHeightInOutputRegions) + frame.y;
+  const bookBottom = (frame) => 1 - frame.scale * baselineInset + frame.y;
+
+  assert.ok(clearanceFrame && firstExpansionFrame, "the exit needs a small clearance frame before expansion begins");
+  assert.equal(
+    clearanceFrame.scale,
+    smallScale,
+    "the finished book must stay small while it travels through the output opening",
+  );
+  assert.ok(
+    bookTop(clearanceFrame) >= outputRail,
+    "the small finished book must fully clear the cabinet lower rail before it expands",
+  );
+  assert.ok(
+    visibleFrames.slice(firstExpansionIndex).every((frame) => bookTop(frame) >= outputRail),
+    "the expanding book must never move back over the cabinet rail",
+  );
+
+  const settledFrame = [...visibleFrames].reverse().find((frame) => frame.scale >= 0.99);
+  assert.ok(settledFrame, "the exit needs a full size settled frame");
+  assert.ok(
+    bookBottom(settledFrame) <= 1,
+    "the extended output mask must keep the full finished book visible without bottom clipping",
+  );
+
+  const settledBookBottom =
+    sceneTop + sceneHeight * (outputTop / 100) + outputRegionHeight * bookBottom(settledFrame);
+  const heroBottomGap = heroBooksHeight + heroBottomPadding - settledBookBottom;
+  assert.ok(
+    heroBottomGap >= 20,
+    "the finished book and its shadow must clear the hero boundary before the service ribbon",
+  );
+  assert.ok(
+    heroBottomGap <= 50,
+    "the hero must not add excessive empty space below the finished book",
+  );
+
+  const compactMotion = css.match(/@keyframes cabinet-book-motion-compact\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+  assert.ok(compactMotion, "tablet and mobile layouts need their own output-clearance geometry");
+  assert.match(
+    css,
+    /@media\s*\(max-width:\s*1080px\)[\s\S]*?\.published-output-track\s*\{[^}]*animation-name:\s*cabinet-book-motion-compact,\s*cabinet-book-visibility/,
+    "compact breakpoints must use the responsive output path",
+  );
+
+  const compactFrames = [];
+  for (const frameMatch of compactMotion.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const transform = frameMatch[2].match(
+      /translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%,\s*0\)\s*scale\(\s*([\d.]+)\s*\)/,
+    );
+    if (!transform) continue;
+    for (const selector of frameMatch[1].split(",")) {
+      compactFrames.push({
+        percent: Number(selector.trim().replace("%", "")),
+        y: Number(transform[2]) / 100,
+        scale: Number(transform[3]),
+      });
+    }
+  }
+  compactFrames.sort((a, b) => a.percent - b.percent);
+
+  const outputLeft = Number(outputRegionRule.match(/left:\s*([\d.-]+)%/)?.[1]);
+  const outputRight = Number(outputRegionRule.match(/right:\s*([\d.-]+)%/)?.[1]);
+  const outputRegionWidthInSceneWidths = 1 - outputLeft / 100 - outputRight / 100;
+  const outputRegionHeightInSceneWidths =
+    (Number(sceneAspect[2]) / Number(sceneAspect[1])) *
+    (1 - outputTop / 100 - outputBottomEdge / 100);
+  const compactBookHeightInOutputRegions =
+    outputRegionWidthInSceneWidths / outputRegionHeightInSceneWidths;
+  const compactVisibleFrames = compactFrames.filter((frame) => frame.percent >= 60 && frame.percent <= 97);
+  const compactSmallScale = Math.min(...compactVisibleFrames.map((frame) => frame.scale));
+  const compactFirstExpansionIndex = compactVisibleFrames.findIndex(
+    (frame) => frame.scale > compactSmallScale + 0.001,
+  );
+  const compactClearanceFrame = compactVisibleFrames[compactFirstExpansionIndex - 1];
+  const compactBookTop = (frame) =>
+    1 - frame.scale * (baselineInset + compactBookHeightInOutputRegions) + frame.y;
+  const compactBookBottom = (frame) => 1 - frame.scale * baselineInset + frame.y;
+
+  assert.ok(
+    compactClearanceFrame && compactClearanceFrame.scale === compactSmallScale,
+    "the responsive finished book must stay small until it clears the rail",
+  );
+  assert.ok(
+    compactBookTop(compactClearanceFrame) >= outputRail,
+    "the responsive finished book must clear the cabinet rail before expansion",
+  );
+  assert.ok(
+    compactVisibleFrames.slice(compactFirstExpansionIndex).every((frame) => compactBookTop(frame) >= outputRail),
+    "responsive expansion must remain below the cabinet rail",
+  );
+  const compactSettledFrame = [...compactVisibleFrames].reverse().find((frame) => frame.scale >= 0.99);
+  assert.ok(compactSettledFrame, "the responsive exit needs a full size settled frame");
+  assert.ok(
+    compactBookBottom(compactSettledFrame) <= 1,
+    "the responsive finished book must remain inside the extended output mask",
+  );
+
+  const responsiveHeroBooksRule = css.match(
+    /@media\s*\(max-width:\s*820px\)\s*\{[\s\S]*?\.hero-books\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
+  const mobileHeroBooksRule = css.match(
+    /@media\s*\(max-width:\s*590px\)\s*\{[\s\S]*?\.hero-books\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
+  const responsiveMinHeight = responsiveHeroBooksRule.match(/min-height:\s*([^;]+)/)?.[1]?.trim();
+  const mobileMinHeight = mobileHeroBooksRule.match(/min-height:\s*([^;]+)/)?.[1]?.trim();
+
+  function evaluateResponsiveLength(value, viewportWidth) {
+    const pixels = value?.match(/^([\d.]+)px$/);
+    if (pixels) return Number(pixels[1]);
+
+    const calculated = value?.match(/^calc\(\s*([\d.]+)vw\s*([+-])\s*([\d.]+)px\s*\)$/);
+    if (calculated) {
+      const viewportPart = (Number(calculated[1]) / 100) * viewportWidth;
+      const pixelPart = Number(calculated[3]);
+      return calculated[2] === "+" ? viewportPart + pixelPart : viewportPart - pixelPart;
+    }
+
+    const capped = value?.match(
+      /^min\(\s*([\d.]+)px\s*,\s*calc\(\s*([\d.]+)vw\s*([+-])\s*([\d.]+)px\s*\)\s*\)$/,
+    );
+    if (capped) {
+      const viewportPart = (Number(capped[2]) / 100) * viewportWidth;
+      const pixelPart = Number(capped[4]);
+      const calculatedLength = capped[3] === "+" ? viewportPart + pixelPart : viewportPart - pixelPart;
+      return Math.min(Number(capped[1]), calculatedLength);
+    }
+
+    return Number.NaN;
+  }
+
+  const responsiveCases = [
+    { viewportWidth: 820, minHeight: responsiveMinHeight, sceneTop: 40, bottomPadding: 76 },
+    { viewportWidth: 591, minHeight: responsiveMinHeight, sceneTop: 40, bottomPadding: 76 },
+    { viewportWidth: 590, minHeight: mobileMinHeight, sceneTop: 18, bottomPadding: 48 },
+    { viewportWidth: 390, minHeight: mobileMinHeight, sceneTop: 18, bottomPadding: 48 },
+  ];
+  for (const responsiveCase of responsiveCases) {
+    const responsiveSceneWidth = Math.min(635, responsiveCase.viewportWidth - 32);
+    const responsiveSceneHeight = responsiveSceneWidth * (2 / 3);
+    const settledBookBottomAtViewport =
+      responsiveCase.sceneTop +
+      responsiveSceneHeight * 0.48 +
+      responsiveSceneHeight * 1.22 * 0.91;
+    const settledBookShadowReserve = 15;
+    const responsiveHeroHeight = evaluateResponsiveLength(
+      responsiveCase.minHeight,
+      responsiveCase.viewportWidth,
+    );
+    const responsiveHeroBottomGap =
+      responsiveHeroHeight +
+      responsiveCase.bottomPadding -
+      settledBookBottomAtViewport -
+      settledBookShadowReserve;
+
+    assert.ok(
+      Number.isFinite(responsiveHeroHeight),
+      `${responsiveCase.viewportWidth}px needs an evaluable responsive hero reservation`,
+    );
+    assert.ok(
+      responsiveHeroBottomGap >= 20,
+      `${responsiveCase.viewportWidth}px must keep the settled book and shadow at least 20px above the hero boundary`,
+    );
+    assert.ok(
+      responsiveHeroBottomGap <= 50,
+      `${responsiveCase.viewportWidth}px must not add more than 50px below the settled book and shadow`,
+    );
+  }
+
+  assert.ok(
+    css.indexOf("@media (max-width: 590px)") > css.indexOf("@media (max-width: 820px)"),
+    "the 590px hero reservation must follow and override the 820px responsive rule",
+  );
+
+  const exteriorTrackRule = css.match(
+    /\.published-output-exterior \.published-output-track\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
+  const exteriorAnimationNames = exteriorTrackRule
+    .match(/animation-name:\s*([^;]+)/)?.[1]
+    .split(",")
+    .map((name) => name.trim()) ?? [];
+
+  assert.equal(
+    exteriorAnimationNames.length,
+    2,
+    "the exterior rendering needs its own motion and visibility tracks",
+  );
+  assert.equal(
+    exteriorAnimationNames[0],
+    "cabinet-book-motion",
+    "the exterior rendering must stay synchronized with the slot motion",
+  );
+  assert.notEqual(
+    exteriorAnimationNames[1],
+    "cabinet-book-visibility",
+    "the exterior rendering must not appear while the book is still visible inside the slot",
+  );
+  const exteriorAnimationOverrides = [...exteriorTrackRule.matchAll(
+    /(?:^|;)\s*(animation(?:-[\w-]+)?)\s*:/g,
+  )].map((match) => match[1]);
+  assert.deepEqual(
+    exteriorAnimationOverrides,
+    ["animation-name"],
+    "the exterior handoff must retain the base discrete timing, duration, and delay",
+  );
+
+  const exteriorVisibilityName = exteriorAnimationNames[1] ?? "";
+  const exteriorVisibility = css.match(
+    new RegExp(`@keyframes\\s+${exteriorVisibilityName}\\s*\\{([\\s\\S]*?)\\n\\}`),
+  )?.[1] ?? "";
+  const exteriorVisibilityFrames = [];
+  for (const frameMatch of exteriorVisibility.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const opacity = Number(frameMatch[2].match(/opacity:\s*([\d.]+)/)?.[1]);
+    if (!Number.isFinite(opacity)) continue;
+    for (const selector of frameMatch[1].split(",")) {
+      exteriorVisibilityFrames.push({
+        percent: Number(selector.trim().replace("%", "")),
+        opacity,
+      });
+    }
+  }
+  exteriorVisibilityFrames.sort((a, b) => a.percent - b.percent);
+  const firstExteriorVisibleFrame = exteriorVisibilityFrames.find((frame) => frame.opacity > 0);
+
+  assert.ok(
+    firstExteriorVisibleFrame && firstExteriorVisibleFrame.percent >= clearanceFrame.percent,
+    "the exterior rendering must stay hidden until the desktop book clears the cabinet rail",
+  );
+  assert.ok(
+    firstExteriorVisibleFrame && firstExteriorVisibleFrame.percent >= compactClearanceFrame.percent,
+    "the exterior rendering must stay hidden until the responsive book clears the cabinet rail",
+  );
+  assert.match(
+    css,
+    new RegExp(
+      `@media\\s*\\(max-width:\\s*1080px\\)[\\s\\S]*?` +
+      `\\.published-output-exterior \\.published-output-track\\s*\\{[^}]*` +
+      `animation-name:\\s*cabinet-book-motion-compact,\\s*${exteriorVisibilityName}`,
+    ),
+    "compact breakpoints must keep the exterior visibility handoff synchronized",
+  );
+});
+
+test("navigation and cover service copy stay consistent", async () => {
+  const response = await render("/");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  const primaryNavigation = html.match(/<nav class="primary-nav"[\s\S]*?<\/nav>/)?.[0] ?? "";
+
+  assert.match(primaryNavigation, /href="\/how-it-works"[^>]*>How It Works<\/a>/);
+  assert.match(html, /Front covers, full wraps, 3D concepts, and 3D presentation views/);
+  assert.doesNotMatch(html, /Front covers, full wraps, 2D concepts/);
+});
+
+test("www redirects to the canonical apex without dropping path or query", async () => {
+  const response = await renderAbsolute("https://www.amzpublishingpro.com/contact?from=www");
+  assert.equal(response.status, 308);
+  assert.equal(
+    response.headers.get("location"),
+    "https://amzpublishingpro.com/contact?from=www",
+  );
+});
+
+test("legacy service URLs permanently redirect directly to their final canonical URLs", async () => {
+  const redirects = {
+    "/author-brand-a-plus": "/author-brand-content",
+    "/amazon-ad-campaign": "/book-ad-campaigns",
+    "/amazon-ad-campaign.php": "/book-ad-campaigns",
+    "/amazon-author.php": "/author-brand-content",
+    "/brand-content.php": "/author-brand-content",
+    "/about-us.php": "/about",
+    "/ecommerce-store-setup.php": "/ecommerce-store-setup",
+    "/ecommerce-marketing.php": "/ecommerce-marketing",
+    "/amazon-plus-marketing.php": "/book-marketing",
+    "/amazon-book-publishing.php": "/book-publishing",
+    "/deep-keyword.php": "/keyword-research",
+    "/contact-us.php": "/contact",
+    "/terms.php": "/terms",
+    "/privacy.php": "/privacy",
+    "/index.php": "/book-publishing",
+  };
+
+  for (const [source, destination] of Object.entries(redirects)) {
+    const response = await renderAbsolute(
+      `https://amzpublishingpro.com${source}?source=legacy`,
+    );
+    assert.equal(response.status, 301, `${source} must permanently redirect`);
+    assert.equal(
+      response.headers.get("location"),
+      `https://amzpublishingpro.com${destination}?source=legacy`,
+    );
+  }
+
+  const wwwLegacyResponse = await renderAbsolute(
+    "https://www.amzpublishingpro.com/amazon-ad-campaign.php?source=www",
+  );
+  assert.equal(wwwLegacyResponse.status, 301);
+  assert.equal(
+    wwwLegacyResponse.headers.get("location"),
+    "https://amzpublishingpro.com/book-ad-campaigns?source=www",
+  );
+});
+
+test("sitemap lists only canonical pages and omits redirect sources", async () => {
+  const response = await render("/sitemap.xml");
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /xml/i);
+
+  const xml = await response.text();
+  const sitemapPaths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+    ([, location]) => new URL(location).pathname,
+  );
+  const redirectSources = [
+    "/author-brand-a-plus",
+    "/amazon-ad-campaign",
+    "/amazon-ad-campaign.php",
+    "/amazon-author.php",
+    "/brand-content.php",
+    "/about-us.php",
+    "/ecommerce-store-setup.php",
+    "/ecommerce-marketing.php",
+    "/amazon-plus-marketing.php",
+    "/amazon-book-publishing.php",
+    "/deep-keyword.php",
+    "/contact-us.php",
+    "/terms.php",
+    "/privacy.php",
+    "/index.php",
+  ];
+  const redirectDestinations = [
+    "/author-brand-content",
+    "/book-ad-campaigns",
+    "/about",
+    "/ecommerce-store-setup",
+    "/ecommerce-marketing",
+    "/book-marketing",
+    "/book-publishing",
+    "/keyword-research",
+    "/contact",
+    "/terms",
+    "/privacy",
+  ];
+
+  assert.ok(sitemapPaths.includes("/"));
+  for (const destination of redirectDestinations) {
+    assert.ok(sitemapPaths.includes(destination), `${destination} must be canonical in the sitemap`);
+  }
+  for (const source of redirectSources) {
+    assert.ok(!sitemapPaths.includes(source), `${source} must not appear in the sitemap`);
+  }
+  assert.match(xml, /<lastmod>2026-11-27T00:00:00\.000Z<\/lastmod>/);
+  assert.match(xml, /<changefreq>weekly<\/changefreq>/);
+  assert.match(xml, /<changefreq>monthly<\/changefreq>/);
+});
+
+test("HTML and public images receive useful cache policy", async () => {
+  const htmlResponse = await render("/");
+  assert.match(htmlResponse.headers.get("cache-control") ?? "", /s-maxage=300/);
+
+  const imageResponse = await renderAbsolute(
+    "https://amzpublishingpro.com/sample-covers/fiction-01.webp",
+    new Response("image", { status: 200, headers: { "content-type": "image/webp" } }),
+  );
+  assert.equal(imageResponse.status, 200);
+  assert.match(imageResponse.headers.get("cloudflare-cdn-cache-control") ?? "", /max-age=604800/);
+  assert.ok(
+    [...imageResponse.headers.keys()].filter((name) => name.toLowerCase() === "cache-control").length <= 1,
+  );
+});
+
+test("personalized requests are never marked as publicly cacheable", async () => {
+  const response = await renderAbsolute(
+    "https://amzpublishingpro.com/",
+    undefined,
+    { cookie: "session=test" },
+  );
+
+  assert.equal(response.status, 200);
+  assert.doesNotMatch(response.headers.get("cache-control") ?? "", /\bpublic\b/i);
+
+  const wildcardVaryResponse = await renderAbsolute(
+    "https://amzpublishingpro.com/sample-covers/fiction-01.webp",
+    new Response("image", {
+      status: 200,
+      headers: { "content-type": "image/webp", vary: "*" },
+    }),
+  );
+  assert.doesNotMatch(wildcardVaryResponse.headers.get("cache-control") ?? "", /\bpublic\b/i);
+});
+
+test("public canonical routes return successful HTML responses", async () => {
+  const routes = [
+    "/services",
+    "/portfolio",
+    "/genres",
+    "/how-it-works",
+    "/resources",
+    "/about",
+    "/contact",
+    "/privacy",
+    "/terms",
+    "/book-publishing",
+    "/cover-design",
+  ];
+
+  for (const route of routes) {
+    const response = await render(route);
+    assert.equal(response.status, 200, `${route} should return 200`);
+    assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  }
+});
+
+test("every public route discloses the same phone number", async () => {
+  const routes = [
+    "/",
+    "/services",
+    "/portfolio",
+    "/genres",
+    "/how-it-works",
+    "/resources",
+    "/about",
+    "/contact",
+    "/privacy",
+    "/terms",
+    "/book-publishing",
+    "/cover-design",
+  ];
+
+  for (const route of routes) {
+    const response = await render(route);
+    assert.equal(response.status, 200, `${route} should return 200`);
+    const html = await response.text();
+    const phoneHrefs = [...html.matchAll(/href="(tel:[^"]+)"/g)].map((match) => match[1]);
+
+    assert.match(html, /909-293-9645/, `${route} should display the disclosed phone number`);
+    assert.deepEqual(
+      [...new Set(phoneHrefs)],
+      ["tel:+19092939645"],
+      `${route} should dial only the disclosed phone number`,
+    );
+    assert.doesNotMatch(html, /\+18774369143|\(877\) 436-9143/);
+  }
+});
+
+test("brand preview is a compact AMZ Publishing Pro 1200 by 630 PNG", async () => {
+  const png = await readFile(new URL("../public/og.png", import.meta.url));
+  assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(png.readUInt32BE(16), 1200);
+  assert.equal(png.readUInt32BE(20), 630);
+  assert.ok(png.byteLength < 100_000, "social image should stay lightweight");
+
+});
+
+test("no page carries the previous brand or presents platform names as its own", async () => {
+  const sitemap = await (await render("/sitemap.xml")).text();
+  const routes = [...sitemap.matchAll(/<loc>https:\/\/amzpublishingpro\.com([^<]*)<\/loc>/g)].map((match) => match[1] || "/");
+  assert.equal(routes.length, 21, "the sitemap lists the homepage and 20 content pages");
+  for (const route of routes) {
+    const response = await render(route);
+    assert.equal(response.status, 200, `${route} should return 200`);
+    const html = await response.text();
+    assert.doesNotMatch(html, /Amazon Kindle (?:Service|Pro)|amazonkindle/i, `${route} must not carry the previous brand`);
+    assert.doesNotMatch(html, /linkedin\.com\/company\/amazonkindleservice/i);
+    const visible = html.replace(/<script[\s\S]*?<\/script>/g, "");
+    const platformMentions = visible.match(/Amazon|Kindle|KDP/g) ?? [];
+    const disclaimerCount = (visible.match(/not affiliated with, endorsed by, or sponsored by Amazon, Kindle, KDP/g) ?? []).length;
+    assert.ok(disclaimerCount >= 1, `${route} must show the independence statement`);
+    assert.equal(platformMentions.length, disclaimerCount * 3, `${route} may name those platforms only inside the independence statement`);
+  }
+});
+
+test("cover samples are labelled as samples and never as client work", async () => {
+  for (const route of ["/", "/portfolio"]) {
+    const html = await (await render(route)).text();
+    assert.match(html, /original sample cover concepts created for this website/);
+    assert.match(html, /not client projects or published books/);
+    assert.match(html, />Sample concept</);
+    assert.doesNotMatch(html, /supplied by the client/i);
+  }
+});
+
+test("source keeps reliable native navigation and deferred motion code", async () => {
+  const [site, contentPage, css, data] = await Promise.all([
+    readFile(new URL("../app/PublishingSite.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/ContentPage.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/site-data.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(site, /import Link from "next\/link"/);
+  assert.doesNotMatch(contentPage, /import Link from "next\/link"/);
+  assert.match(site, /import\("jquery"\)/);
+  assert.doesNotMatch(site, /import \$ from "jquery"/);
+  assert.match(site, /IntersectionObserver/);
+  assert.match(site, /prefers-reduced-motion: reduce/);
+  assert.match(site, /usePrefersReducedMotion/);
+  assert.match(site, /Motion off/);
+  assert.doesNotMatch(site, /\$slider\.scrollLeft\(0\)/);
+  assert.match(site, /mobile-menu-backdrop/);
+  assert.match(site, /prefetchEligibleSelector/);
+  assert.doesNotMatch(css, /Georgia|Times New Roman/);
+  assert.match(css, /--font-sans: system-ui/);
+  assert.doesNotMatch(`${site}\n${contentPage}\n${data}`, /[—–]/);
+  assert.doesNotMatch(`${site}\n${contentPage}\n${data}`, /info@amazonkindlepro\.co/i);
+});
