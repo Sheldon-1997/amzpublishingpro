@@ -15,6 +15,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 | Source rebrand | Done, 34 tests pass on a fresh build |
 | GitHub repository | This repository |
 | Live deployment on amzpublishingpro.com | **Not done** (domain is parked) |
+| Static copy for GitHub Pages | Script and workflow ready, tested locally; **not published** |
 | Node build for the GoDaddy VPS | **Not done** (current build targets a Cloudflare Worker) |
 | Inquiry form server delivery | **Not done** (form opens the visitor's email app) |
 | `info@amzpublishingpro.com` mailbox | **Does not exist yet** (no MX record on the domain) |
@@ -92,10 +93,31 @@ The sha256 values in `app/cover-catalog.ts` must then be updated to match.
 
 ## Hosting notes
 
+### GitHub Pages (static copy)
+
+```bash
+pnpm build
+node scripts/export-static.mjs site
+```
+
+This renders the homepage and the 20 content pages to `site/` together with
+`sitemap.xml`, `robots.txt`, `404.html`, `CNAME`, and `.nojekyll`. The
+workflow in `.github/workflows/pages.yml` runs the tests and publishes that
+folder on every push to `main`. GitHub Pages must be enabled for the
+repository with "GitHub Actions" as the source, and on a free GitHub plan the
+repository has to be public.
+
+Limits of the static copy: the 15 legacy path redirects in
+`app/site-redirects.ts` are not served, and there is no server code, so the
+inquiry form can only open the visitor's email app.
+
+### Server build
+
 `pnpm build` produces a Cloudflare Worker bundle (`dist/server/index.js`) plus
-static client assets. It is not a static site and not an ordinary Node HTTP
-server. Running it on the GoDaddy VPS needs a tested Node entry or adapter,
-a dedicated non-root user, a loopback port, and an Nginx or Apache reverse
-proxy with HTTPS for this domain only.
+static client assets. It is not an ordinary Node HTTP server. Running it on
+the GoDaddy VPS needs a tested Node entry or adapter, a dedicated non-root
+user, a loopback port, and an Nginx or Apache reverse proxy with HTTPS for
+this domain only. A server is also what direct inbox delivery for the inquiry
+form requires.
 
 `.openai/hosting.json` is read by the build config; its project id is empty.
