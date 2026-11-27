@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { businessFacts } from "./business-data";
+import { SeasonEffects, SeasonRibbon } from "./SeasonLayer";
+import { seasonBootstrapScript } from "./seasons";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,8 +34,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    // data-season is set by the head script before paint, so the server and
+    // client <html> attributes are allowed to differ.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script id="season-bootstrap" dangerouslySetInnerHTML={{ __html: seasonBootstrapScript() }} />
+      </head>
+      <body>
+        <SeasonRibbon />
+        {children}
+        <SeasonEffects />
+      </body>
     </html>
   );
 }

@@ -12,7 +12,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 
 | Item | State |
 | --- | --- |
-| Source rebrand | Done, 34 tests pass on a fresh build |
+| Source rebrand | Done, 38 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
 | Live site | Published with GitHub Pages at http://amzpublishingpro.com/ on 27 November 2026 |
 | HTTPS | Certificate requested by GitHub Pages; turn on "Enforce HTTPS" in Settings > Pages once it is issued |
@@ -31,7 +31,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # local preview
-pnpm test         # production build + 34 tests
+pnpm test         # production build + 38 tests
 pnpm lint
 ```
 
@@ -54,6 +54,51 @@ dependencies as part of unrelated work.
   cache headers.
 - `public/sample-covers/` — 40 original sample covers (WebP, 640x960).
 - `scripts/generate-sample-covers.mjs` — regenerates the sample covers.
+
+## Seasonal themes
+
+`app/seasons.ts` holds 14 United States occasions. A small script in the page
+head reads today's date in US Central time and sets `data-season` on `<html>`
+before the first paint, so the theme changes on its own with no rebuild.
+
+| Season | Dates |
+| --- | --- |
+| New Year | 26 December to 2 January |
+| Martin Luther King Jr. Day | third Monday of January (one line, no effects) |
+| Valentine's Day | 8 to 14 February |
+| Presidents' Day | Saturday to the third Monday of February (one line) |
+| Memorial Day | Saturday to the last Monday of May (one line) |
+| Juneteenth | 19 June (one line) |
+| Independence Day | 1 to 4 July |
+| Labor Day | Saturday to the first Monday of September (one line) |
+| Halloween | 24 to 31 October |
+| Veterans Day | 11 November (one line) |
+| Thanksgiving | Monday to Thursday of Thanksgiving week |
+| Black Friday | Friday to Sunday after Thanksgiving |
+| Cyber Monday | the Monday after |
+| Holiday season | the day after Cyber Monday to 25 December |
+
+Festive seasons change the header, accent colours, hero tints, show a greeting
+ribbon, and run a light canvas effect (snow, leaves, confetti, hearts, or
+sparks). Days of remembrance show a single line only. The visitor can close
+the ribbon, which also stops the effect and restores the normal colours for
+that browser session. Effects never run for visitors who prefer reduced motion.
+
+Preview any theme with `?season=<id>`, for example
+`/?season=holiday-season`, or turn it off with `/?season=off`.
+
+Greetings are not promotions. To announce a real offer, put its exact wording
+in that season's `offer` field; a test fails if a default greeting mentions a
+sale, discount, or deal.
+
+## Hero animation
+
+The finished book in the hero is a CSS 3D object (`.book3d`: cover, spine,
+page block, back). It starts dim inside the FINISHED BOOK opening, comes
+forward over the lip, grows, and turns to face the viewer. The whole scene
+leans a few degrees toward the pointer on desktop. Gallery covers swing open
+on hover, and sections rise into view on scroll in browsers that support
+scroll-driven animations.
 
 ## Cover samples
 

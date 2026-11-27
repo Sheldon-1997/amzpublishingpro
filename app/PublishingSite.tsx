@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-html-link-for-pages -- Native links avoid a Vinext production navigation crash. */
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildOrganizationStructuredData, businessFacts } from "./business-data";
 import { heroPublishingCovers } from "./hero-publishing-covers";
 import { genreFromUrl, portfolioHrefForGenre } from "./portfolio-navigation";
@@ -641,6 +641,36 @@ export function SiteFooter() {
   );
 }
 
+type HeroCover = (typeof heroPublishingCovers)[number];
+
+// A real 3D book built from CSS faces: front cover, spine, page block and back.
+function HeroBook3D({ cover }: { cover: HeroCover }) {
+  return (
+    <figure className="published-book">
+      <span className="book3d" style={{ "--book-spine": cover.spine } as CSSProperties}>
+        <span className="book3d-back" />
+        <span className="book3d-spine" />
+        <span className="book3d-pages" />
+        <span className="book3d-top" />
+        <span className="book3d-bottom" />
+        {/* Native images keep every sample cover at its original proportions. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="published-book-cover"
+          src={cover.src}
+          alt=""
+          width={cover.width}
+          height={cover.height}
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+        />
+        <span className="book3d-sheen" />
+      </span>
+    </figure>
+  );
+}
+
 function HeroBookRotator() {
   const [heroCoverIndex, setHeroCoverIndex] = useState(1);
   const [rotationPaused, setRotationPaused] = useState(false);
@@ -704,6 +734,37 @@ function HeroBookRotator() {
     };
   }, [documentVisible, heroCoverIndex, reducedMotion, sceneVisible]);
 
+  // Pointer tilt: the whole scene leans a few degrees toward the cursor.
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene || reducedMotion) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    let frame = 0;
+    const setTilt = (x: number, y: number) => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        scene.style.setProperty("--tilt-x", x.toFixed(3));
+        scene.style.setProperty("--tilt-y", y.toFixed(3));
+      });
+    };
+    const onMove = (event: PointerEvent) => {
+      const box = scene.getBoundingClientRect();
+      const x = ((event.clientX - box.left) / box.width - 0.5) * 2;
+      const y = ((event.clientY - box.top) / box.height - 0.5) * 2;
+      setTilt(Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)));
+    };
+    const onLeave = () => setTilt(0, 0);
+
+    scene.addEventListener("pointermove", onMove);
+    scene.addEventListener("pointerleave", onLeave);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      scene.removeEventListener("pointermove", onMove);
+      scene.removeEventListener("pointerleave", onLeave);
+    };
+  }, [reducedMotion]);
+
   const activeCover = heroPublishingCovers[heroCoverIndex];
   const motionStopped = reducedMotion || rotationPaused || !sceneVisible || !documentVisible;
 
@@ -720,7 +781,7 @@ function HeroBookRotator() {
       ref={sceneRef}
     >
       <p className="visually-hidden" id="hero-publishing-description">
-        A manuscript enters the cabinet, the processing light turns yellow, and the published book exits as the light turns green. The sequence repeats across ten sample covers.
+        A manuscript slides into the cabinet, the processing light turns yellow, and a finished book slides out and turns to show its cover as the light turns green. The sequence repeats across ten sample covers.
       </p>
       <div className="hero-art-backdrop" aria-hidden="true" />
       <div className="hero-scene-floor" aria-hidden="true" />
@@ -823,31 +884,7 @@ function HeroBookRotator() {
             <div className="published-output-track">
               <div className="published-output">
                 <span className="visually-hidden">Finished Book</span>
-                <figure className="published-book">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    className="published-book-body"
-                    src="/hero-publishing/finished-book-body.webp"
-                    alt=""
-                    width="720"
-                    height="720"
-                    loading="eager"
-                    decoding="async"
-                    aria-hidden="true"
-                  />
-                  {/* Native images keep every sample cover at its original proportions. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    className="published-book-cover"
-                    src={activeCover.src}
-                    alt=""
-                    width={activeCover.width}
-                    height={activeCover.height}
-                    loading="eager"
-                    decoding="async"
-                    fetchPriority="high"
-                  />
-                </figure>
+                <HeroBook3D cover={activeCover} />
               </div>
             </div>
           </div>
@@ -859,31 +896,7 @@ function HeroBookRotator() {
           >
             <div className="published-output-track">
               <div className="published-output">
-                <figure className="published-book">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    className="published-book-body"
-                    src="/hero-publishing/finished-book-body.webp"
-                    alt=""
-                    width="720"
-                    height="720"
-                    loading="eager"
-                    decoding="async"
-                    aria-hidden="true"
-                  />
-                  {/* Native images keep every sample cover at its original proportions. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    className="published-book-cover"
-                    src={activeCover.src}
-                    alt=""
-                    width={activeCover.width}
-                    height={activeCover.height}
-                    loading="eager"
-                    decoding="async"
-                    fetchPriority="high"
-                  />
-                </figure>
+                <HeroBook3D cover={activeCover} />
               </div>
             </div>
           </div>
