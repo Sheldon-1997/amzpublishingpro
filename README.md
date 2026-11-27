@@ -18,7 +18,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 | HTTPS | Certificate requested by GitHub Pages; turn on "Enforce HTTPS" in Settings > Pages once it is issued |
 | DNS (GoDaddy) | Four apex A records to GitHub Pages, `www` CNAME to `sheldon-1997.github.io` |
 | Inquiry form server delivery | **Not done** (form opens the visitor's email app) |
-| `info@amzpublishingpro.com` mailbox | **Does not exist yet** (no MX record on the domain) |
+| `info@amzpublishingpro.com` mailbox | Set up by the owner on GoDaddy email (DKIM and email records are on the domain); delivery not tested from the site |
 | Node build for a VPS | **Not done** (only needed for a server-side form or the legacy redirects) |
 
 ## Requirements
