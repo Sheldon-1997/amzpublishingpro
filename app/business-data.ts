@@ -55,3 +55,16 @@ export function buildOrganizationStructuredData(
     ...(profileUrls.length ? { sameAs: [...profileUrls] } : {}),
   };
 }
+
+// Figures supplied and confirmed by the business owner on 27 November 2026.
+// They are the owner's own statements about the business. Change a number or
+// a label only on the owner's instruction.
+export const ownerFigures = [
+  { value: 1500, suffix: "+", label: "Books Published" },
+  { value: 150, suffix: "+", label: "Best-Sellers" },
+  { value: 20, suffix: "+", label: "Team of Book Publishers" },
+  { value: 225, suffix: "+", label: "Dedicated AMZ Marketing Specialists" },
+  { value: 100, suffix: "%", label: "Client Satisfaction" },
+] as const;
+
+export const ownerClientStatement = "Partnered with 200+ clients across local, national, and global markets.";

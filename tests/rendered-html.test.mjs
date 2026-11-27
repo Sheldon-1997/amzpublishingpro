@@ -441,6 +441,22 @@ test("client covers are shown as front covers and kept apart from the samples", 
   }
 });
 
+test("the figure bar shows exactly the owner's figures", async () => {
+  const { ownerClientStatement, ownerFigures } = await import("../app/business-data.ts");
+  const html = await (await render("/")).text();
+  const bar = html.match(/<section class="figure-bar"[\s\S]*?<\/section>/)?.[0] ?? "";
+
+  assert.ok(bar, "the figure bar renders");
+  assert.ok(bar.includes(ownerClientStatement));
+  assert.equal((bar.match(/class="figure-item"/g) ?? []).length, ownerFigures.length);
+  for (const figure of ownerFigures) {
+    assert.ok(bar.includes(`>${figure.label}<`), `${figure.label} is labelled as the owner wrote it`);
+    assert.ok(bar.includes(`${figure.value.toLocaleString("en-US")}`), `${figure.label} shows its number without JavaScript`);
+  }
+  assert.match(bar, /Dedicated AMZ Marketing Specialists/);
+  assert.doesNotMatch(bar, /Amazon|Kindle|KDP/i, "the bar names no platform");
+});
+
 test("client reviews are only shown with a public source", async () => {
   const { clientReviews } = await import("../app/client-reviews.ts");
   const html = await (await render("/")).text();
@@ -746,7 +762,7 @@ test("every page carries the seasonal layer without inventing a sale", async () 
   }
 });
 
-test("the Amazon KDP section describes a service, states independence, and makes no unverified claims", async () => {
+test("the Amazon KDP section describes a service and states independence", async () => {
   const html = await (await render("/")).text();
   const start = html.indexOf('<section class="kdp-section"');
   const section = html.slice(start, html.indexOf("</section>", start));
@@ -763,9 +779,9 @@ test("the Amazon KDP section describes a service, states independence, and makes
   assert.match(section, /class="kdp-stage" aria-hidden="true"/, "the floating books are decorative");
   assert.match(section, />Client covers</);
 
-  // No statistics or testimonials are published until they can be backed by records.
-  assert.doesNotMatch(html, /\b\d[\d,]*\+\s*(?:<[^>]+>\s*)*(?:Books|Best|Clients|Team|Dedicated)/i);
-  assert.doesNotMatch(html, /100%\s*(?:<[^>]+>\s*)*Client Satisfaction|best-?sellers?\b|testimonial/i);
+  // The KDP section itself carries no figures; the owner's figures live only
+  // in the figure bar (see "the figure bar shows exactly the owner's figures").
+  assert.doesNotMatch(section, /\b\d[\d,]*\+|100%|best-?sellers?\b|testimonial/i);
 });
 
 test("the page ships the modern layer with reduced-motion fallbacks", async () => {

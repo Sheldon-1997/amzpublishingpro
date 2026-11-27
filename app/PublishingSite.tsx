@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Native links avoid a Vinext production navigation crash. */
 import { type CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "./BrandLogo";
-import { buildOrganizationStructuredData, businessFacts } from "./business-data";
+import { buildOrganizationStructuredData, businessFacts, ownerClientStatement, ownerFigures } from "./business-data";
 import { clientCovers } from "./client-covers";
 import { clientReviews } from "./client-reviews";
 import { heroPublishingCovers } from "./hero-publishing-covers";
@@ -956,6 +956,64 @@ function KdpSection() {
   );
 }
 
+// One figure in the bar. The server renders the final number; in the browser it
+// counts up once when the bar scrolls into view.
+function FigureCount({ value, suffix }: { value: number; suffix: string }) {
+  const [shown, setShown] = useState(value);
+  const ref = useRef<HTMLSpanElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || reducedMotion || !("IntersectionObserver" in window)) return;
+
+    let frame = 0;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      observer.disconnect();
+      const started = performance.now();
+      const duration = 1600;
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - started) / duration);
+        setShown(Math.round(value * (1 - (1 - progress) ** 3)));
+        if (progress < 1) frame = window.requestAnimationFrame(tick);
+      };
+      setShown(0);
+      frame = window.requestAnimationFrame(tick);
+    }, { threshold: 0.6 });
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+    };
+  }, [reducedMotion, value]);
+
+  return (
+    <span className="figure-number" ref={ref}>
+      <span aria-hidden="true">{shown.toLocaleString("en-US")}<i>{suffix}</i></span>
+      <span className="visually-hidden">{value.toLocaleString("en-US")}{suffix}</span>
+    </span>
+  );
+}
+
+function FigureBar() {
+  return (
+    <section className="figure-bar" aria-label="AMZ Publishing Pro in numbers" data-spotlight="">
+      <div className="figure-bar-inner">
+        <p className="figure-bar-lead">{ownerClientStatement}</p>
+        <dl className="figure-list">
+          {ownerFigures.map((figure) => (
+            <div className="figure-item" key={figure.label}>
+              <dt>{figure.label}</dt>
+              <dd><FigureCount value={figure.value} suffix={figure.suffix} /></dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
 // Covers made for clients, standing on a shelf. Each one leans toward the pointer.
 function ClientCovers() {
   if (clientCovers.length === 0) return null;
@@ -1195,6 +1253,8 @@ export function PublishingSite() {
       </section>
 
       <KdpSection />
+
+      <FigureBar />
 
       <section className="section services-section" id="services">
         <div className="section-heading">

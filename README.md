@@ -12,7 +12,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 
 | Item | State |
 | --- | --- |
-| Source rebrand | Done, 44 tests pass on a fresh build |
+| Source rebrand | Done, 45 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
 | Live site | Published with GitHub Pages at https://amzpublishingpro.com/ on 27 November 2026 |
 | HTTPS | Certificate issued and "Enforce HTTPS" is on; `http` and `www` redirect to `https://amzpublishingpro.com` |
@@ -31,7 +31,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # local preview
-pnpm test         # production build + 44 tests
+pnpm test         # production build + 45 tests
 pnpm lint
 ```
 
@@ -143,9 +143,12 @@ author's own KDP account. It states that the company is independent and not
 affiliated with Amazon. The site shows no Amazon logo, storefront screenshot,
 or wording that presents the business as Amazon; tests enforce this.
 
-The site publishes no performance statistics. Add them only when each figure
-can be backed by records. Reviews follow the rules under "Client covers and
-reviews" above. A test fails if unverified figures are added by accident.
+The homepage figure bar shows the figures in `ownerFigures`
+(`app/business-data.ts`). They were supplied and confirmed by the business
+owner on 27 November 2026 and are the owner's own statements; the owner should
+be able to back each one with records, especially before quoting them in
+adverts. Change them only on the owner's instruction. Reviews follow the rules
+under "Client covers and reviews" above.
 
 Section items carry no running numbers ("01", "02"); a test enforces this.
 

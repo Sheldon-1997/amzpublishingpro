@@ -689,6 +689,37 @@ html[data-season]:not([data-season-dismissed]) .hero-art-backdrop {
 .kdp-step p { margin: 0; color: rgba(255,255,255,.7); font-size: 14.5px; line-height: 1.65; }
 .kdp-path-note { margin: 22px 0 0; color: rgba(255,255,255,.6); font-size: 13px; }
 
+/* Figure bar: the owner's headline numbers in one wide band. */
+.figure-bar { position: relative; overflow: hidden; background: linear-gradient(100deg,#1b2f7a 0%,#2b4aa0 34%,#3f6be0 62%,#2b4aa0 86%,#1b2f7a 100%); color: var(--paper); }
+.figure-bar::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background: radial-gradient(circle at 12% 120%,rgba(236,199,102,.35),transparent 34%),radial-gradient(circle at 92% -30%,rgba(255,255,255,.22),transparent 36%);
+}
+.figure-bar-inner { position: relative; z-index: 1; width: min(1320px,calc(100% - 48px)); margin: 0 auto; padding: 58px 0 62px; }
+.figure-bar-lead { margin: 0 0 34px; font-size: 19px; font-weight: 650; letter-spacing: -.005em; text-align: center; color: rgba(255,255,255,.92); }
+.figure-list { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); margin: 0; }
+.figure-item { display: flex; flex-direction: column-reverse; align-items: center; gap: 10px; padding: 6px 18px; text-align: center; border-left: 1px solid rgba(255,255,255,.22); }
+.figure-item:first-child { border-left: 0; }
+.figure-item dt { max-width: 190px; color: rgba(255,255,255,.86); font-size: 13.5px; font-weight: 700; letter-spacing: .06em; line-height: 1.35; text-transform: uppercase; }
+.figure-item dd { margin: 0; }
+.figure-number { display: block; font-size: clamp(44px,5vw,72px); font-weight: 800; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; text-shadow: 0 10px 30px rgba(10,18,56,.35); }
+.figure-number i { margin-left: 2px; color: #ecc766; font-style: normal; }
+@media (max-width: 980px) {
+  .figure-list { grid-template-columns: repeat(3,minmax(0,1fr)); row-gap: 34px; }
+  .figure-item:nth-child(4) { border-left: 0; }
+  .figure-item:nth-child(n+4) { grid-column: span 1; }
+}
+@media (max-width: 590px) {
+  .figure-bar-inner { width: min(100% - 32px,1320px); padding: 44px 0 48px; }
+  .figure-bar-lead { font-size: 16px; margin-bottom: 26px; }
+  .figure-list { grid-template-columns: repeat(2,minmax(0,1fr)); row-gap: 28px; }
+  .figure-item { padding-inline: 8px; }
+  .figure-item:nth-child(odd) { border-left: 0; }
+  .figure-item:nth-child(4) { border-left: 1px solid rgba(255,255,255,.22); }
+  .figure-item:last-child { grid-column: 1 / -1; }
+  .figure-item dt { font-size: 12px; }
+}
+
 /* Client covers standing on a shelf. */
 .client-covers-section { padding-bottom: 40px; }
 .client-shelf {
