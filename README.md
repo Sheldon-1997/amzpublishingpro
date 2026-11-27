@@ -13,12 +13,13 @@ structured data, sitemap, colour palette, and cover library were replaced.
 | Item | State |
 | --- | --- |
 | Source rebrand | Done, 34 tests pass on a fresh build |
-| GitHub repository | This repository |
-| Live deployment on amzpublishingpro.com | **Not done** (domain is parked) |
-| Static copy for GitHub Pages | Script and workflow ready, tested locally; **not published** |
-| Node build for the GoDaddy VPS | **Not done** (current build targets a Cloudflare Worker) |
+| GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
+| Live site | Published with GitHub Pages at http://amzpublishingpro.com/ on 27 November 2026 |
+| HTTPS | Certificate requested by GitHub Pages; turn on "Enforce HTTPS" in Settings > Pages once it is issued |
+| DNS (GoDaddy) | Four apex A records to GitHub Pages, `www` CNAME to `sheldon-1997.github.io` |
 | Inquiry form server delivery | **Not done** (form opens the visitor's email app) |
 | `info@amzpublishingpro.com` mailbox | **Does not exist yet** (no MX record on the domain) |
+| Node build for a VPS | **Not done** (only needed for a server-side form or the legacy redirects) |
 
 ## Requirements
 
