@@ -526,7 +526,7 @@ function ProjectInquiryForm({ modal = false }: { modal?: boolean }) {
       </label>
       <label className="consent-field">
           <input type="checkbox" required />
-          <span>I agree to be contacted about this inquiry and have reviewed the <a href="/privacy">privacy notice</a>.</span>
+          <span>I agree to be contacted about this inquiry and have reviewed the <a href="/privacy">privacy policy</a>.</span>
       </label>
       <button className="button button-primary form-submit" type="submit">Prepare My Inquiry</button>
       <p className="form-note">This form prepares an email with your project details. Review the message before sending.</p>
@@ -636,7 +636,7 @@ export function SiteFooter() {
           <a href={phoneHref}>{phoneDisplay}</a>
           <a href={`mailto:${email}`}>{email}</a>
           <address className="footer-address">{businessAddress}</address>
-          <a href="/privacy">Privacy</a>
+          <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms</a>
         </div>
       </div>
@@ -648,14 +648,14 @@ export function SiteFooter() {
   );
 }
 
-type HeroCover = { src: string; spine: string; width: number; height: number; label: string; kind: "client" | "sample" };
+type HeroCover = { src: string; spine: string; width: number; height: number; aspect: number; label: string; kind: "client" | "sample" };
 
 // The hero shows real client covers. The sample covers are only a fallback for
 // a site with no client covers on file.
 const heroCovers: readonly HeroCover[] = clientCovers.length > 0
-  ? clientCovers.map((cover) => ({ src: cover.src, spine: cover.spine, width: cover.width, height: cover.height, label: cover.title, kind: "client" }))
-  : heroPublishingCovers.map((cover) => ({ src: cover.src, spine: cover.spine, width: cover.width, height: cover.height, label: cover.genre, kind: "sample" }));
-const heroCoverWord = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][heroCovers.length] ?? String(heroCovers.length);
+  ? clientCovers.map((cover) => ({ src: cover.src, spine: cover.spine, width: cover.width, height: cover.height, aspect: cover.width / cover.height, label: cover.title, kind: "client" }))
+  : heroPublishingCovers.map((cover) => ({ src: cover.src, spine: cover.spine, width: cover.width, height: cover.height, aspect: cover.width / cover.height, label: cover.genre, kind: "sample" }));
+const heroCoverWord = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"][heroCovers.length] ?? String(heroCovers.length);
 type HeroSceneHandle = import("./hero-scene").HeroSceneHandle;
 
 // A book built from CSS faces. The KDP section uses it for its sample books and
@@ -837,11 +837,10 @@ const kdpSteps = [
   { title: "KDP setup and publishing", text: "Title details, description, categories, keywords, pricing, and upload in your own KDP account." },
 ] as const;
 
-const kdpShowcase = [
-  { id: "fantasy-01", spine: "#2a1440" },
-  { id: "romance-03", spine: "#0d4f58" },
-  { id: "nonfiction-02", spine: "#213547" },
-] as const;
+// Three client covers float beside the KDP copy (all 2:3 so they sit evenly).
+const kdpShowcase = ["every-choice-has-consequences", "twisted-play-better-golf", "success-by-the-book"]
+  .map((slug) => clientCovers.find((cover) => cover.slug === slug))
+  .filter((cover): cover is (typeof clientCovers)[number] => Boolean(cover));
 
 // Pointer effects shared by the whole page: cards marked data-tilt lean toward
 // the cursor, and sections marked data-spotlight get a soft light under it.
@@ -925,7 +924,7 @@ function KdpSection() {
         <div className="kdp-stage" aria-hidden="true">
           <div className="kdp-orbit" />
           {kdpShowcase.map((book, index) => (
-            <span className={`kdp-book kdp-book-${index + 1}`} key={book.id}>
+            <span className={`kdp-book kdp-book-${index + 1}`} key={book.slug}>
               <span className="book3d" style={{ "--book-spine": book.spine } as CSSProperties}>
                 <span className="book3d-back" />
                 <span className="book3d-spine" />
@@ -933,12 +932,12 @@ function KdpSection() {
                 <span className="book3d-top" />
                 <span className="book3d-bottom" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className="kdp-book-cover" src={`/sample-covers/${book.id}.webp`} alt="" width="640" height="960" loading="lazy" decoding="async" />
+                <img className="kdp-book-cover" src={book.src} alt="" width={book.width} height={book.height} loading="lazy" decoding="async" />
                 <span className="book3d-sheen" />
               </span>
             </span>
           ))}
-          <span className="kdp-stage-caption">Sample covers</span>
+          <span className="kdp-stage-caption">Client covers</span>
         </div>
       </div>
 
@@ -968,21 +967,70 @@ function ClientCovers() {
           <p className="section-kicker">Client projects</p>
           <h2>Covers we designed for our authors.</h2>
         </div>
-        <p>Front covers from finished print files. Every title belongs to its author.</p>
+        <p>Front covers from finished projects. Every title belongs to its author.</p>
       </div>
       <ul className="client-shelf">
         {clientCovers.map((cover) => (
           <li key={cover.slug}>
-            <figure className="client-cover" data-tilt="">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={cover.src} alt={`${cover.title} by ${cover.author}, front cover`} width={cover.width} height={cover.height} loading="lazy" decoding="async" />
-            </figure>
+            <div className="client-cover-slot">
+              <figure
+                className="client-cover"
+                data-tilt=""
+                style={{
+                  aspectRatio: `${cover.width} / ${cover.height}`,
+                  // Slots are 2:3. A taller cover is narrowed so it still fits the slot's height.
+                  width: `${Math.min(100, (cover.width / cover.height / (2 / 3)) * 100).toFixed(2)}%`,
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={cover.src}
+                  alt={`${cover.title}${cover.author ? ` by ${cover.author}` : ""}, front cover`}
+                  width={cover.width}
+                  height={cover.height}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </figure>
+            </div>
             <span className="client-shelf-edge" aria-hidden="true" />
             <p className="client-cover-title">{cover.title}</p>
-            <p className="client-cover-author">{cover.author}</p>
+            {cover.author && <p className="client-cover-author">{cover.author}</p>}
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+// Two rows of client covers drifting in opposite directions. Decorative: the
+// same covers are listed with their titles on the shelf above.
+function CoverRiver() {
+  if (clientCovers.length < 6) return null;
+  const half = Math.ceil(clientCovers.length / 2);
+  const rows = [clientCovers.slice(0, half), clientCovers.slice(half)];
+
+  return (
+    <section className="cover-river" aria-label="Client covers in motion">
+      <div className="cover-river-copy">
+        <p className="section-kicker">From manuscript to shelf</p>
+        <h2>Your book could be the next one here.</h2>
+        <button className="button button-primary" type="button" onClick={requestProjectInquiry}>Start my book</button>
+      </div>
+      <div className="cover-river-rows" aria-hidden="true">
+        {rows.map((row, rowIndex) => (
+          <div className={`cover-river-row cover-river-row-${rowIndex + 1}`} key={rowIndex}>
+            {[0, 1].map((copy) => (
+              <div className="cover-river-group" key={copy}>
+                {row.map((cover) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={cover.slug} src={cover.src} alt="" width={cover.width} height={cover.height} loading="lazy" decoding="async" />
+                ))}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1274,6 +1322,8 @@ export function PublishingSite() {
           <article><span>Formats</span><h3>Choose the right print and digital formats.</h3><p>Reflowable eBooks, paperback interiors, and hardcover wraps each need different production checks.</p></article>
         </div>
       </section>
+
+      <CoverRiver />
 
       <section className="faq-section">
         <div className="section faq-inner">

@@ -124,9 +124,12 @@ recolour "PRO". The pack's favicon and 1200x630 share image are in `public/`.
 
 ## Client covers and reviews
 
-`app/client-covers.ts` lists covers designed for clients. Only the front panel
-of each print wrap is published, never the back-cover text. Add a cover only
-when its author has agreed to it being shown.
+`app/client-covers.ts` lists covers designed for clients (12 at present). Only
+the front panel is published, never the back-cover text, at the artwork's own
+proportions (800 pixels wide). Add a cover only when its author has agreed to
+it being shown. One entry puts a cover in four places: the 3D hero book, the
+bookcase under "Client projects", the moving cover band above the FAQ, and
+(for the three slugs named in `kdpShowcase`) beside the KDP copy.
 
 `app/client-reviews.ts` feeds the homepage review deck. The section stays
 hidden while the list is empty. Add a review only if it is posted on a public
@@ -187,10 +190,16 @@ The sha256 values in `app/cover-catalog.ts` must then be updated to match.
 
 ## Before running paid ads
 
-- The Privacy notice states that no Meta Pixel, Conversions API, analytics, or
-  advertising cookies are in use. Update it, and add any consent choices the
-  law requires, before adding a tracking tag.
-- The inquiry form must deliver to a working inbox first.
+- `/privacy` is the Privacy Policy to give Facebook, Instagram and search
+  advertising. It covers inquiries, lead forms, sharing, retention, rights,
+  and how to request deletion. Have it reviewed by a lawyer for the states
+  and countries you advertise in.
+- The policy states that the site uses no Meta Pixel, analytics, or
+  advertising cookies, and a test enforces that no such script is present.
+  Before adding a pixel or tag, update the "Website technology and cookies"
+  and "Advertising" sections and that test in the same change.
+- Search basics are in place: one canonical URL per page, `sitemap.xml`,
+  `robots.txt`, Open Graph and X card tags, and Organization structured data.
 
 ## Hosting notes
 

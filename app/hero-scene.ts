@@ -38,7 +38,8 @@ import {
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
-export type HeroSceneCover = { src: string; spine: string };
+// `aspect` is the cover's width divided by its height.
+export type HeroSceneCover = { src: string; spine: string; aspect: number };
 
 export type HeroSceneOptions = {
   canvas: HTMLCanvasElement;
@@ -66,7 +67,7 @@ const BLOCK_H = BOOK_H - OVERHANG * 2;
 const BLOCK_T = BOOK_T - BOARD * 2;
 
 // Timeline, in seconds.
-const HOLD = 4.4;
+const HOLD = 3.9;
 const MORPH = 4.8;
 const CYCLE = HOLD + MORPH;
 const SWAP_AT = 0.51;
@@ -322,6 +323,8 @@ export function createHeroScene(options: HeroSceneOptions): HeroSceneHandle | nu
       coverMaterial.map = texture;
       coverMaterial.needsUpdate = true;
     }
+    // The book is modelled at 2:3; other trim sizes stretch its width.
+    book.scale.x = MathUtils.clamp(cover.aspect / (BOOK_W / BOOK_H), 0.8, 1.3);
     clothMaterial.color.set(cover.spine);
     spineTexture?.dispose();
     spineTexture = new CanvasTexture(paintSpine(cover.spine));

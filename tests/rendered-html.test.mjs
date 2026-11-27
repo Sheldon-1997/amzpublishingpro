@@ -321,6 +321,13 @@ test("contact and legal pages publish the current business address and advertisi
       assert.match(html, /does not currently use the Meta Pixel, Conversions API, analytics cookies, or advertising cookies/);
       assert.match(html, /Any cookie set for that purpose is strictly necessary/);
       assert.doesNotMatch(html, /__cf_bm/);
+      // Sections advertisers and their reviewers look for.
+      for (const heading of ["Who we are", "Information you choose to provide", "How information is used", "How information is shared", "Retention", "Your choices", "How to request deletion of your data", "Children"]) {
+        assert.ok(html.includes(`>${heading}<`), `privacy policy has a "${heading}" section`);
+      }
+      assert.match(html, /If you submit a lead form on Facebook or Instagram/);
+      assert.match(html, /We do not sell personal information/);
+      assert.match(html, /info@amzpublishingpro\.com/);
     }
   }
 });
@@ -353,7 +360,7 @@ test("homepage hero is a 3D book stage with a still fallback", async () => {
 
   assert.match(
     html,
-    /id="hero-publishing-portal"[^>]*role="region"[^>]*data-cover-count="4"[^>]*data-cover-kind="client"/,
+    /id="hero-publishing-portal"[^>]*role="region"[^>]*data-cover-count="12"[^>]*data-cover-kind="client"/,
   );
   assert.match(html, /data-visual="book-studio"/);
   assert.match(html, /id="hero-publishing-motion"/);
@@ -363,11 +370,11 @@ test("homepage hero is a 3D book stage with a still fallback", async () => {
   // with reduced motion, or when WebGL is unavailable.
   assert.match(html, /class="hero-poster"[^>]*aria-hidden="true"/);
   // The hero shows covers designed for clients, labelled as such.
-  assert.match(html, /class="published-book-cover"[^>]*src="\/client-covers\/[a-z-]+\.webp"/);
+  assert.match(html, /class="published-book-cover"[^>]*src="\/client-covers\/[a-z0-9-]+\.webp"/);
   assert.match(html, /class="hero-stage-caption"[^>]*><span>Client project<\/span>/);
   assert.match(
     html,
-    /A hardcover book turns slowly in the light\. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next book\. The sequence repeats across <!-- -->four<!-- --> <!-- -->covers designed for our authors<!-- -->\./,
+    /A hardcover book turns slowly in the light\. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next book\. The sequence repeats across <!-- -->twelve<!-- --> <!-- -->covers designed for our authors<!-- -->\./,
   );
   assert.doesNotMatch(html, /hero-publishing\/|publishing-cabinet|cabinet-/);
 });
@@ -428,8 +435,9 @@ test("client covers are shown as front covers and kept apart from the samples", 
     const bytes = await readFile(new URL(`../public${cover.src}`, import.meta.url));
     assert.equal(bytes.subarray(0, 4).toString("latin1"), "RIFF", `${cover.slug} is a WebP file`);
     assert.ok(bytes.byteLength < 400_000, `${cover.slug} stays reasonably small`);
+    assert.equal(cover.width, 800);
     assert.ok(section.includes(`src="${cover.src}"`));
-    assert.ok(cover.title && cover.author);
+    assert.ok(cover.title, "every client cover has its title");
   }
 });
 
@@ -753,7 +761,7 @@ test("the Amazon KDP section describes a service, states independence, and makes
     assert.match(section, new RegExp(`<h3>${step}</h3>`));
   }
   assert.match(section, /class="kdp-stage" aria-hidden="true"/, "the floating books are decorative");
-  assert.match(section, />Sample covers</);
+  assert.match(section, />Client covers</);
 
   // No statistics or testimonials are published until they can be backed by records.
   assert.doesNotMatch(html, /\b\d[\d,]*\+\s*(?:<[^>]+>\s*)*(?:Books|Best|Clients|Team|Dedicated)/i);
