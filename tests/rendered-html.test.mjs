@@ -110,6 +110,7 @@ test("every canonical page aligns document, Open Graph, and X card metadata", as
     "/book-marketing",
     "/about",
     "/portfolio",
+    "/reviews",
     "/genres",
     "/how-it-works",
     "/resources",
@@ -457,20 +458,28 @@ test("the figure bar shows exactly the owner's figures", async () => {
   assert.doesNotMatch(bar, /Amazon|Kindle|KDP/i, "the bar names no platform");
 });
 
-test("client reviews are only shown with a public source", async () => {
+test("client reviews are shown as written, with their source and no invented rating", async () => {
   const { clientReviews } = await import("../app/client-reviews.ts");
-  const html = await (await render("/")).text();
+  const home = await (await render("/")).text();
+  const page = await (await render("/reviews")).text();
 
-  if (clientReviews.length === 0) {
-    assert.doesNotMatch(html, /id="reviews"/, "an empty review list renders no section");
-    return;
-  }
-  assert.match(html, /id="reviews"/);
+  assert.ok(clientReviews.length > 0);
+  assert.match(home, /id="reviews"/);
+  assert.match(home, /href="\/reviews"/);
+  assert.match(page, /class="review-wall"/);
+  assert.equal((page.match(/class="review-card review-note"/g) ?? []).length, clientReviews.length);
+
   for (const review of clientReviews) {
-    assert.match(review.sourceUrl, /^https:\/\//, "every review links to where it was posted");
     assert.ok(review.name.trim() && review.text.trim() && review.date.trim());
+    assert.ok(["email", "public"].includes(review.source));
+    if (review.source === "public") assert.match(review.sourceUrl ?? "", /^https:\/\//, "a public review links to where it was posted");
     assert.doesNotMatch(review.text, /\bFBA\b/, "reviews must be about this publishing service");
+    assert.ok(page.includes(review.name), `${review.name} appears on the reviews page`);
   }
+  if (clientReviews.every((review) => !review.rating)) {
+    assert.doesNotMatch(page, /class="review-stars"/, "no star rating is shown when the client gave none");
+  }
+  assert.match(page, /sent to (?:<!-- -->)?AMZ Publishing Pro(?:<!-- -->)? by email and are published as the authors wrote them/);
 });
 
 test("navigation and cover service copy stay consistent", async () => {
@@ -624,6 +633,7 @@ test("public canonical routes return successful HTML responses", async () => {
   const routes = [
     "/services",
     "/portfolio",
+    "/reviews",
     "/genres",
     "/how-it-works",
     "/resources",
@@ -647,6 +657,7 @@ test("every public route discloses the same phone number", async () => {
     "/",
     "/services",
     "/portfolio",
+    "/reviews",
     "/genres",
     "/how-it-works",
     "/resources",
@@ -686,7 +697,7 @@ test("brand preview is a compact AMZ Publishing Pro 1200 by 630 PNG", async () =
 test("no page carries the previous brand or presents platform names as its own", async () => {
   const sitemap = await (await render("/sitemap.xml")).text();
   const routes = [...sitemap.matchAll(/<loc>https:\/\/amzpublishingpro\.com([^<]*)<\/loc>/g)].map((match) => match[1] || "/");
-  assert.equal(routes.length, 21, "the sitemap lists the homepage and 20 content pages");
+  assert.equal(routes.length, 22, "the sitemap lists the homepage and 21 content pages");
   for (const route of routes) {
     const response = await render(route);
     assert.equal(response.status, 200, `${route} should return 200`);

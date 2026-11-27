@@ -129,6 +129,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         <a href="/#portfolio">Cover Samples</a>
         <a href="/#genres">Genres</a>
         <a href="/how-it-works">How It Works</a>
+        <a href="/reviews">Reviews</a>
         <a href="/resources">Resources</a>
         <a href="/about">About</a>
       </nav>
@@ -184,6 +185,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         <a href="/#portfolio" onClick={() => closeMenu()}>Cover Samples</a>
         <a href="/#genres" onClick={() => closeMenu()}>Genres</a>
         <a href="/how-it-works" onClick={() => closeMenu()}>How It Works</a>
+        <a href="/reviews" onClick={() => closeMenu()}>Reviews</a>
         <a href="/resources" onClick={() => closeMenu()}>Resources</a>
         <a href="/about" onClick={() => closeMenu()}>About</a>
         <a href="/contact" onClick={() => closeMenu()}>Contact</a>
@@ -627,6 +629,7 @@ export function SiteFooter() {
           <a href="/portfolio">Cover samples</a>
           <a href="/genres">Genres</a>
           <a href="/how-it-works">How it works</a>
+          <a href="/reviews">Reviews</a>
           <a href="/resources">Resources</a>
           <a href="/about">About</a>
           <a href="/contact">Contact</a>
@@ -1093,8 +1096,41 @@ function CoverRiver() {
   );
 }
 
+type Review = (typeof clientReviews)[number];
+
+const reviewKey = (review: Review) => `${review.name}-${review.date}`;
+
+// The inside of one review card, shared by the homepage deck and /reviews.
+function ReviewBody({ review, linkTabIndex = 0 }: { review: Review; linkTabIndex?: number }) {
+  return (
+    <>
+      <span className="review-quote-mark" aria-hidden="true">“</span>
+      {review.rating ? (
+        <span className="review-stars" role="img" aria-label={`${review.rating} out of 5 stars`}>
+          {"★".repeat(review.rating)}
+        </span>
+      ) : null}
+      {review.title && <h3>{review.title}</h3>}
+      <blockquote>
+        {review.text.split("\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+      </blockquote>
+      <footer>
+        <strong>{review.name}</strong>
+        <span>{[review.location, review.date].filter(Boolean).join(" · ")}</span>
+        {review.sourceUrl ? (
+          <a href={review.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" tabIndex={linkTabIndex}>
+            Read on {review.sourceName ?? "the review page"} →
+          </a>
+        ) : (
+          <em>Sent to us by email</em>
+        )}
+      </footer>
+    </>
+  );
+}
+
 // Client reviews as a deck of paper cards: the top card is read, then flicked
-// to the back. Renders nothing until app/client-reviews.ts has sourced entries.
+// to the back. Renders nothing while app/client-reviews.ts is empty.
 function ReviewDeck() {
   const [top, setTop] = useState(0);
   const total = clientReviews.length;
@@ -1108,18 +1144,19 @@ function ReviewDeck() {
         <div className="reviews-intro">
           <p className="section-kicker">Author reviews</p>
           <h2>In their own <span className="reviews-script">words.</span></h2>
-          <p>Each review is shown exactly as the author posted it, with a link to the original.</p>
+          <p>Notes our authors sent us after working together, shared here as they wrote them.</p>
           {total > 1 && (
             <div className="reviews-controls">
               <button type="button" aria-label="Previous review" onClick={() => step(-1)}>←</button>
               <button type="button" aria-label="Next review" onClick={() => step(1)}>→</button>
               <span className="reviews-pips" aria-hidden="true">
                 {clientReviews.map((review, index) => (
-                  <i className={index === top ? "is-current" : undefined} key={review.sourceUrl + review.name} />
+                  <i className={index === top ? "is-current" : undefined} key={reviewKey(review)} />
                 ))}
               </span>
             </div>
           )}
+          <a className="text-link reviews-all" href="/reviews">Read every review →</a>
         </div>
 
         <ol className="review-deck" aria-live="polite">
@@ -1131,21 +1168,9 @@ function ReviewDeck() {
                 className={`review-card${leaving ? " is-behind" : ""}`}
                 data-depth={Math.min(depth, 3)}
                 aria-hidden={depth !== 0}
-                key={review.sourceUrl + review.name}
+                key={reviewKey(review)}
               >
-                <span className="review-quote-mark" aria-hidden="true">“</span>
-                <span className="review-stars" role="img" aria-label={`${review.rating} out of 5 stars`}>
-                  {"★".repeat(review.rating)}
-                </span>
-                {review.title && <h3>{review.title}</h3>}
-                <blockquote>{review.text}</blockquote>
-                <footer>
-                  <strong>{review.name}</strong>
-                  <span>{[review.location, review.date].filter(Boolean).join(" · ")}</span>
-                  <a href={review.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" tabIndex={depth === 0 ? 0 : -1}>
-                    Read on {review.sourceName} →
-                  </a>
-                </footer>
+                <ReviewBody review={review} linkTabIndex={depth === 0 ? 0 : -1} />
                 {depth === 0 && total > 1 && (
                   <button className="review-card-next" type="button" onClick={() => step(1)}>
                     <span className="visually-hidden">Next review</span>
@@ -1156,6 +1181,26 @@ function ReviewDeck() {
           })}
         </ol>
       </div>
+    </section>
+  );
+}
+
+// Every review laid out as a wall of paper notes, for the /reviews page.
+export function ReviewWall() {
+  if (clientReviews.length === 0) return null;
+
+  return (
+    <section className="section review-wall-section" aria-label="All author reviews">
+      <ul className="review-wall">
+        {clientReviews.map((review) => (
+          <li className="review-card review-note" key={reviewKey(review)}>
+            <ReviewBody review={review} />
+          </li>
+        ))}
+      </ul>
+      <p className="review-wall-note">
+        These reviews were sent to {businessFacts.name} by email and are published as the authors wrote them.
+      </p>
     </section>
   );
 }

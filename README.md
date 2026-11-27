@@ -43,7 +43,7 @@ dependencies as part of unrelated work.
 - `app/business-data.ts` — the single record of brand name, domain, email,
   phone, address, trust wording, and Organization structured data. Change the
   phone number or email here and nowhere else.
-- `app/site-data.ts` — services and the 20 content pages (including Terms and
+- `app/site-data.ts` — services and the 21 content pages (including Terms and
   Privacy).
 - `app/PublishingSite.tsx` — homepage, header, footer, gallery, inquiry form,
   hero stage, client covers shelf, review deck.
@@ -131,9 +131,12 @@ it being shown. One entry puts a cover in four places: the 3D hero book, the
 bookcase under "Client projects", the moving cover band above the FAQ, and
 (for the three slugs named in `kdpShowcase`) beside the KDP copy.
 
-`app/client-reviews.ts` feeds the homepage review deck. The section stays
-hidden while the list is empty. Add a review only if it is posted on a public
-review profile of this business, copy it word for word, and include the link.
+`app/client-reviews.ts` feeds the homepage review deck and the `/reviews`
+page. The reviews on file were sent to the business by email and supplied by
+the owner; they are shown in the clients' own words, marked "Sent to us by
+email", with no star rating because none was given. Add a review only if a
+real client wrote it, keep the wording as written, and add `sourceUrl` when it
+is posted publicly. Publish a client's name only with that client's consent.
 
 ## Amazon KDP section, statistics, and testimonials
 

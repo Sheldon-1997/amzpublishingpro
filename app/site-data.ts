@@ -65,7 +65,7 @@ export type ContentPageRecord = {
   title: string;
   description: string;
   sections: ContentSection[];
-  kind?: "contact" | "portfolio" | "genres" | "resources";
+  kind?: "contact" | "portfolio" | "genres" | "resources" | "reviews";
 };
 
 const corePages: ContentPageRecord[] = [
@@ -229,6 +229,15 @@ const corePages: ContentPageRecord[] = [
     description: "Share the genre, word count, current stage, services needed, and target formats. No checkout is required.",
     sections: [],
     kind: "contact",
+  },
+  {
+    slug: "reviews",
+    canonical: "/reviews",
+    eyebrow: "Author reviews",
+    title: "What our authors say.",
+    description: `Notes that authors sent to ${businessFacts.name} after working with us, published as they wrote them.`,
+    kind: "reviews",
+    sections: [],
   },
   {
     slug: "terms",

@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Native links avoid a Vinext production navigation crash. */
-import { ContactPanel, PortfolioGallery, SiteFooter, SiteHeader } from "./PublishingSite";
+import { ContactPanel, PortfolioGallery, ReviewWall, SiteFooter, SiteHeader } from "./PublishingSite";
 import { portfolioHrefForGenre } from "./portfolio-navigation";
 import { genres, services, type ContentPageRecord } from "./site-data";
 
@@ -42,6 +42,8 @@ export function ContentPage({ page }: { page: ContentPageRecord }) {
           ))}
         </section>
       ) : null}
+
+      {page.kind === "reviews" ? <ReviewWall /> : null}
 
       {page.kind === "portfolio" ? (
         <section className="section inner-module-section">
