@@ -515,47 +515,21 @@ html[data-season="black-friday"] .season-message[data-season-for="black-friday"]
 html[data-season="cyber-monday"] .season-message[data-season-for="cyber-monday"],
 html[data-season="holiday-season"] .season-message[data-season-for="holiday-season"] { display: block; }
 
-/* Festive palettes. Buttons keep the gold call-to-action so contrast stays the same. */
-html[data-season="black-friday"]:not([data-season-dismissed]) {
-  --header: #0b0b0e; --teal: #7a5c10; --teal-mid: #8a6a16; --teal-deep: #15130d; --blue: #7a5c10;
-  --season-ribbon-bg: linear-gradient(90deg,#000,#1d1808 50%,#000); --season-ribbon-ink: #f7ecc9; --season-ribbon-accent: #ecc766;
-  --season-tint-a: rgba(236,199,102,.3); --season-tint-b: rgba(20,18,10,.1); --season-ring: rgba(122,92,16,.14);
+/* Seasons never replace the brand palette. The header, dark sections, links
+   and buttons stay in the logo's navy, blue and gold all year. A season only
+   picks the ribbon's accent colour and two soft tints behind the hero. */
+html[data-season]:not([data-season-dismissed]) {
+  --season-ribbon-bg: linear-gradient(100deg,#1b2f7a 0%,#2b4aa0 38%,#3f6be0 62%,#2b4aa0 82%,#1b2f7a 100%);
+  --season-ribbon-ink: #ffffff; --season-ribbon-accent: #ecc766;
 }
-html[data-season="cyber-monday"]:not([data-season-dismissed]) {
-  --header: #070b24; --teal: #2d55d6; --teal-mid: #2448c2; --teal-deep: #0a1238; --blue: #2d55d6;
-  --season-ribbon-bg: linear-gradient(90deg,#060a22,#12246b 50%,#060a22); --season-ribbon-ink: #e6eeff; --season-ribbon-accent: #9dc2ff;
-  --season-tint-a: rgba(93,141,239,.26); --season-tint-b: rgba(157,185,255,.2); --season-ring: rgba(45,85,214,.12);
-}
-html[data-season="holiday-season"]:not([data-season-dismissed]) {
-  --header: #0f3a2c; --teal: #1d6a49; --teal-mid: #1a5f41; --teal-deep: #0b2a20; --blue: #1d6a49;
-  --season-ribbon-bg: repeating-linear-gradient(135deg,#8f1d24 0 18px,#a3252c 18px 36px); --season-ribbon-ink: #fff7ea; --season-ribbon-accent: #ffe08a;
-  --season-tint-a: rgba(180,40,48,.14); --season-tint-b: rgba(29,106,73,.16); --season-ring: rgba(29,106,73,.12);
-}
-html[data-season="new-year"]:not([data-season-dismissed]) {
-  --header: #0b1026; --teal: #4a3fb0; --teal-mid: #40369c; --teal-deep: #0b1026; --blue: #4a3fb0;
-  --season-ribbon-bg: linear-gradient(90deg,#0b1026,#2a1f66 50%,#0b1026); --season-ribbon-ink: #f4f0ff; --season-ribbon-accent: #ecc766;
-  --season-tint-a: rgba(236,199,102,.28); --season-tint-b: rgba(120,100,220,.16); --season-ring: rgba(74,63,176,.12);
-}
-html[data-season="thanksgiving"]:not([data-season-dismissed]) {
-  --header: #43280f; --teal: #9a4d16; --teal-mid: #8b4513; --teal-deep: #2c1a0a; --blue: #9a4d16;
-  --season-ribbon-bg: linear-gradient(90deg,#5a2f10,#8b4513 50%,#5a2f10); --season-ribbon-ink: #fff3e0; --season-ribbon-accent: #ffd27a;
-  --season-tint-a: rgba(224,161,58,.3); --season-tint-b: rgba(168,68,47,.14); --season-ring: rgba(154,77,22,.13);
-}
-html[data-season="halloween"]:not([data-season-dismissed]) {
-  --header: #1b1029; --teal: #a3480f; --teal-mid: #92400e; --teal-deep: #1b1029; --blue: #a3480f;
-  --season-ribbon-bg: linear-gradient(90deg,#1b1029,#4b2a78 50%,#1b1029); --season-ribbon-ink: #fff1e2; --season-ribbon-accent: #ffb25c;
-  --season-tint-a: rgba(226,113,29,.24); --season-tint-b: rgba(123,75,181,.16); --season-ring: rgba(123,75,181,.13);
-}
-html[data-season="independence-day"]:not([data-season-dismissed]) {
-  --teal: #a81f30; --teal-mid: #981b2b; --blue: #a81f30;
-  --season-ribbon-bg: linear-gradient(90deg,#14204a 0 33%,#8f1d2c 33% 66%,#14204a 66%); --season-ribbon-ink: #ffffff; --season-ribbon-accent: #ffe08a;
-  --season-tint-a: rgba(178,34,52,.16); --season-tint-b: rgba(60,91,191,.18); --season-ring: rgba(178,34,52,.1);
-}
-html[data-season="valentines"]:not([data-season-dismissed]) {
-  --header: #4f1530; --teal: #a82a55; --teal-mid: #98244c; --teal-deep: #3a0f23; --blue: #a82a55;
-  --season-ribbon-bg: linear-gradient(90deg,#6a1b3d,#a82a55 50%,#6a1b3d); --season-ribbon-ink: #fff0f4; --season-ribbon-accent: #ffd6e0;
-  --season-tint-a: rgba(226,87,122,.2); --season-tint-b: rgba(242,157,179,.22); --season-ring: rgba(168,42,85,.11);
-}
+html[data-season="black-friday"]:not([data-season-dismissed]) { --season-ribbon-accent: #ecc766; --season-tint-a: rgba(236,199,102,.26); --season-tint-b: rgba(93,141,239,.2); --season-ring: rgba(43,74,160,.1); }
+html[data-season="cyber-monday"]:not([data-season-dismissed]) { --season-ribbon-accent: #9dc2ff; --season-tint-a: rgba(93,141,239,.26); --season-tint-b: rgba(157,185,255,.22); --season-ring: rgba(45,85,214,.12); }
+html[data-season="holiday-season"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffd9a0; --season-tint-a: rgba(196,58,66,.12); --season-tint-b: rgba(157,185,255,.2); --season-ring: rgba(43,74,160,.1); }
+html[data-season="new-year"]:not([data-season-dismissed]) { --season-ribbon-accent: #ecc766; --season-tint-a: rgba(236,199,102,.26); --season-tint-b: rgba(120,140,235,.2); --season-ring: rgba(43,74,160,.11); }
+html[data-season="thanksgiving"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffd27a; --season-tint-a: rgba(224,161,58,.26); --season-tint-b: rgba(157,185,255,.16); --season-ring: rgba(43,74,160,.09); }
+html[data-season="halloween"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffb25c; --season-tint-a: rgba(226,113,29,.2); --season-tint-b: rgba(123,110,220,.16); --season-ring: rgba(43,74,160,.1); }
+html[data-season="independence-day"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffe08a; --season-tint-a: rgba(178,34,52,.14); --season-tint-b: rgba(60,91,191,.2); --season-ring: rgba(43,74,160,.1); }
+html[data-season="valentines"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffd0dc; --season-tint-a: rgba(226,87,122,.16); --season-tint-b: rgba(157,185,255,.2); --season-ring: rgba(43,74,160,.1); }
 html[data-season]:not([data-season-dismissed]) .hero {
   background: radial-gradient(circle at 78% 22%,var(--season-tint-b,rgba(157,185,255,.13)),transparent 28%),radial-gradient(circle at 8% 88%,var(--season-tint-a,transparent),transparent 30%),linear-gradient(120deg,var(--ivory) 0 58%,var(--warm) 58% 100%);
 }

@@ -102,3 +102,12 @@ test("the head script applies the date, honours previews, and remembers a dismis
   assert.ok(dismissed.has("data-season-dismissed"));
   assert.ok(!runBootstrap("", { now: "2026-11-27T18:00:00Z", dismissed: "thanksgiving" }).has("data-season-dismissed"));
 });
+
+test("seasons never replace the brand palette", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const seasonal = [...css.matchAll(/html\[data-season[^\]]*\][^{]*\{([^}]*)\}/g)].map((match) => match[1]).join("\n");
+  assert.ok(seasonal.includes("--season-ribbon-accent"));
+  assert.doesNotMatch(seasonal, /--(header|teal|teal-mid|teal-deep|blue|cta-start|cta-end)\s*:/, "a season must not recolour the header, links or buttons");
+  assert.doesNotMatch(seasonal, /#000\b|#0b0b0e/i, "no black theme");
+});

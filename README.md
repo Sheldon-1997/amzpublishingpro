@@ -12,7 +12,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 
 | Item | State |
 | --- | --- |
-| Source rebrand | Done, 43 tests pass on a fresh build |
+| Source rebrand | Done, 44 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
 | Live site | Published with GitHub Pages at https://amzpublishingpro.com/ on 27 November 2026 |
 | HTTPS | Certificate issued and "Enforce HTTPS" is on; `http` and `www` redirect to `https://amzpublishingpro.com` |
@@ -31,7 +31,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # local preview
-pnpm test         # production build + 43 tests
+pnpm test         # production build + 44 tests
 pnpm lint
 ```
 
@@ -82,10 +82,12 @@ before the first paint, so the theme changes on its own with no rebuild.
 | Cyber Monday | the Monday after |
 | Holiday season | the day after Cyber Monday to 25 December |
 
-Festive seasons change the header, accent colours, hero tints, show a greeting
-ribbon, and run a light canvas effect (snow, leaves, confetti, hearts, or
-sparks). Days of remembrance show a single line only. The visitor can close
-the ribbon, which also stops the effect and restores the normal colours for
+A season never replaces the brand colours: the header, dark sections, links
+and buttons stay in the logo's navy, blue and gold all year (a test enforces
+this). Festive seasons show a blue greeting ribbon with their own accent
+colour, add two soft tints behind the hero, and run a light canvas effect
+(snow, leaves, confetti, hearts, or sparks). Days of remembrance show a single
+line only. The visitor can close the ribbon, which also stops the effect for
 that browser session. Effects never run for visitors who prefer reduced motion.
 
 Preview any theme with `?season=<id>`, for example
