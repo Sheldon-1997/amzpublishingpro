@@ -14,8 +14,8 @@ structured data, sitemap, colour palette, and cover library were replaced.
 | --- | --- |
 | Source rebrand | Done, 38 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
-| Live site | Published with GitHub Pages at http://amzpublishingpro.com/ on 27 November 2026 |
-| HTTPS | Certificate requested by GitHub Pages; turn on "Enforce HTTPS" in Settings > Pages once it is issued |
+| Live site | Published with GitHub Pages at https://amzpublishingpro.com/ on 27 November 2026 |
+| HTTPS | Certificate issued and "Enforce HTTPS" is on; `http` and `www` redirect to `https://amzpublishingpro.com` |
 | DNS (GoDaddy) | Four apex A records to GitHub Pages, `www` CNAME to `sheldon-1997.github.io` |
 | Inquiry form server delivery | **Not done** (form opens the visitor's email app) |
 | `info@amzpublishingpro.com` mailbox | Set up by the owner on GoDaddy email (DKIM and email records are on the domain); delivery not tested from the site |
