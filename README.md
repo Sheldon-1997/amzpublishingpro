@@ -12,12 +12,12 @@ structured data, sitemap, colour palette, and cover library were replaced.
 
 | Item | State |
 | --- | --- |
-| Source rebrand | Done, 47 tests pass on a fresh build |
+| Source rebrand | Done, 48 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
 | Live site | Published with GitHub Pages at https://amzpublishingpro.com/ on 27 November 2026 |
 | HTTPS | Certificate issued and "Enforce HTTPS" is on; `http` and `www` redirect to `https://amzpublishingpro.com` |
 | DNS (GoDaddy) | Four apex A records to GitHub Pages, `www` CNAME to `sheldon-1997.github.io` |
-| Inquiry form server delivery | **Not done** (form opens the visitor's email app) |
+| Inquiry form delivery | The form posts to FormSubmit, which emails `info@amzpublishingpro.com`. The inbox owner must click the one-time activation email. If delivery fails the form opens the visitor's email app instead. |
 | `info@amzpublishingpro.com` mailbox | Set up by the owner on GoDaddy email (DKIM and email records are on the domain); delivery not tested from the site |
 | Node build for a VPS | **Not done** (only needed for a server-side form or the legacy redirects) |
 
@@ -31,7 +31,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # local preview
-pnpm test         # production build + 47 tests
+pnpm test         # production build + 48 tests
 pnpm lint
 ```
 
@@ -120,7 +120,9 @@ while scrolling. Menu items turn into gold bookmark ribbons on hover. It
 carries the phone number on every page (an icon button on phones). The hero's
 pause control is not drawn but is still reachable by keyboard. The contact
 section at the foot of the homepage shows the number large beside the inquiry
-form; the form still opens the visitor's email app.
+form. The form sends through FormSubmit (`inquiryEndpoint` in
+`app/PublishingSite.tsx`) and falls back to the visitor's email app if that
+request fails.
 
 ## Performance
 

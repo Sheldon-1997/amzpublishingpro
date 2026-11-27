@@ -1003,3 +1003,12 @@ main { position: relative; }
   .review-stage { margin-top: 40px; }
   .review-stage .review-card { align-self: start; }
 }
+/* Inquiry form: hidden trap field for bots, and the thank-you state. */
+.form-honey { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.form-submit:disabled { cursor: progress; opacity: .7; }
+.form-sent { justify-items: start; gap: 14px; text-align: left; }
+.form-sent-mark { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 50%; background: linear-gradient(135deg,#ecc766,#d4a43a); color: #14204a; font-size: 30px; font-weight: 800; animation: form-sent-pop .5s cubic-bezier(.2,1.4,.4,1) both; }
+.form-sent h3 { margin: 6px 0 0; color: var(--ink); font-size: 26px; line-height: 1.2; letter-spacing: -.02em; }
+.form-sent p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.65; }
+.form-sent-again { border: 0; background: none; cursor: pointer; padding: 0; }
+@keyframes form-sent-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }

@@ -476,6 +476,22 @@ test("the page stays light: no per-frame filters, paused off-screen loops, small
   }
 });
 
+test("the inquiry form sends directly to the business inbox and never loses an inquiry", async () => {
+  const site = await readFile(new URL("../app/PublishingSite.tsx", import.meta.url), "utf8");
+  const home = await (await render("/")).text();
+  const privacy = await (await render("/privacy")).text();
+
+  assert.match(site, /const inquiryEndpoint = `https:\/\/formsubmit\.co\/ajax\/\$\{email\}`;/);
+  assert.match(site, /method: "POST"/);
+  assert.match(site, /_replyto: details\.Email/);
+  assert.match(site, /window\.location\.href = `mailto:\$\{email\}/, "a failed delivery falls back to the visitor's email app");
+  assert.match(home, />Send My Inquiry</);
+  assert.match(home, /name="_honey"/);
+  assert.doesNotMatch(home, /Prepare My Inquiry|prepares an email/);
+  assert.match(privacy, />Inquiry form</);
+  assert.match(privacy, /passed to FormSubmit, a form delivery service/);
+});
+
 test("the figure bar shows exactly the owner's figures", async () => {
   const { ownerClientStatement, ownerFigures } = await import("../app/business-data.ts");
   const html = await (await render("/")).text();

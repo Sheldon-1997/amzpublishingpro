@@ -456,27 +456,76 @@ export function PortfolioGallery({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// The form delivery service that emails each inquiry to the business inbox.
+// FormSubmit needs no account: the first submission sends a one-time
+// activation email to the inbox, and inquiries are delivered after that.
+const inquiryEndpoint = `https://formsubmit.co/ajax/${email}`;
+
+type InquiryState = "idle" | "sending" | "sent" | "fallback";
+
 function ProjectInquiryForm({ modal = false }: { modal?: boolean }) {
-  const [status, setStatus] = useState("");
+  const [state, setState] = useState<InquiryState>("idle");
+  const [sender, setSender] = useState({ name: "", email: "" });
 
-  const submitInquiry = (event: FormEvent<HTMLFormElement>) => {
+  const submitInquiry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (state === "sending") return;
     const form = new FormData(event.currentTarget);
-    const subject = `Publishing inquiry: ${String(form.get("projectType") || "Book project")}`;
-    const body = [
-      `Name: ${String(form.get("name") || "")}`,
-      `Email: ${String(form.get("email") || "")}`,
-      `Phone: ${String(form.get("phone") || "")}`,
-      `Genre: ${String(form.get("genre") || "")}`,
-      `Manuscript stage: ${String(form.get("stage") || "")}`,
-      `Services: ${String(form.get("services") || "")}`,
-      "",
-      String(form.get("message") || ""),
-    ].join("\n");
+    const field = (name: string) => String(form.get(name) || "").trim();
+    // Bots fill every field; people never see this one.
+    if (field("_honey")) return;
 
-    setStatus("Your email application is opening with the inquiry details. Review the message before sending.");
+    const subject = `Publishing inquiry: ${field("projectType") || "Book project"} from ${field("name")}`;
+    const details = {
+      Name: field("name"),
+      Email: field("email"),
+      Phone: field("phone"),
+      "Project type": field("projectType"),
+      Genre: field("genre"),
+      "Manuscript stage": field("stage"),
+      "Services needed": field("services"),
+      "Project details": field("message"),
+      Page: window.location.pathname,
+    };
+    setSender({ name: details.Name, email: details.Email });
+    setState("sending");
+
+    let delivered = false;
+    try {
+      const response = await fetch(inquiryEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ ...details, _subject: subject, _replyto: details.Email, _template: "table", _captcha: "false" }),
+      });
+      const result = (await response.json().catch(() => null)) as { success?: string | boolean } | null;
+      delivered = response.ok && (result?.success === true || result?.success === "true");
+    } catch {
+      delivered = false;
+    }
+
+    if (delivered) {
+      setState("sent");
+      return;
+    }
+
+    // Delivery failed: never lose the inquiry. Open the visitor's own email
+    // app with the same details, as the form did before.
+    const body = Object.entries(details).filter(([label]) => label !== "Page").map(([label, value]) => `${label}: ${value}`).join("\n");
+    setState("fallback");
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
+
+  if (state === "sent") {
+    return (
+      <div className={`project-form form-sent${modal ? " is-modal" : ""}`} role="status">
+        <span className="form-sent-mark" aria-hidden="true">✓</span>
+        <h3>Thank you{sender.name ? `, ${sender.name.split(" ")[0]}` : ""}. Your inquiry is on its way.</h3>
+        <p>We have your details and will reply to {sender.email || "your email address"}. If it is urgent, call us now.</p>
+        <a className="button button-primary" href={phoneHref}>Call {phoneDisplay}</a>
+        <button className="text-link form-sent-again" type="button" onClick={() => setState("idle")}>Send another inquiry</button>
+      </div>
+    );
+  }
 
   return (
     <form className={`project-form${modal ? " is-modal" : ""}`} onSubmit={submitInquiry}>
@@ -533,14 +582,24 @@ function ProjectInquiryForm({ modal = false }: { modal?: boolean }) {
           Project details
           <textarea name="message" rows={5} required placeholder="Word count, formats, schedule, and the main result you need" />
       </label>
+      <label className="form-honey" aria-hidden="true">
+          Leave this field empty
+          <input name="_honey" type="text" tabIndex={-1} autoComplete="off" />
+      </label>
       <label className="consent-field">
           <input type="checkbox" required />
           <span>I agree to be contacted about this inquiry and have reviewed the <a href="/privacy">privacy policy</a>.</span>
       </label>
-      <button className="button button-primary form-submit" type="submit">Prepare My Inquiry</button>
-      <p className="form-note">This form prepares an email with your project details. Review the message before sending.</p>
+      <button className="button button-primary form-submit" type="submit" disabled={state === "sending"}>
+        {state === "sending" ? "Sending…" : "Send My Inquiry"}
+      </button>
+      <p className="form-note">Your details go straight to our inbox. We reply by email or phone.</p>
       <p className="form-note form-safety-note">{businessFacts.credentialWarning}</p>
-      {status ? <p className="form-status" role="status">{status}</p> : null}
+      {state === "fallback" ? (
+        <p className="form-status" role="status">
+          We could not send the form automatically, so your email application is opening with the same details. Press send there, or call {phoneDisplay}.
+        </p>
+      ) : null}
     </form>
   );
 }
