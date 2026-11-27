@@ -134,6 +134,13 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         <a href="/about">About</a>
       </nav>
 
+      <a className="header-phone" href={phoneHref} aria-label={`Call ${phoneDisplay}`}>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.6 21 3 13.4 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" />
+        </svg>
+        <span>{phoneDisplay}</span>
+      </a>
+
       <button className="header-cta" type="button" onClick={requestProjectInquiry}>
         Start Your Project
       </button>
@@ -577,7 +584,7 @@ export function ContactPanel({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`contact-layout${compact ? " is-compact" : ""}`}>
       <div className="contact-copy">
-        <p className="section-kicker">Start with the manuscript</p>
+        <p className="section-kicker">Contact us</p>
         <h2>Tell us where your book stands today.</h2>
         <p>
           Share the book&apos;s genre, approximate word count, current draft stage, and publishing plans. We will review it before discussing scope.
@@ -1099,8 +1106,9 @@ function CoverRiver() {
 type Review = (typeof clientReviews)[number];
 
 const reviewKey = (review: Review) => `${review.name}-${review.date}`;
+const reviewInitials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
 
-// The inside of one review card, shared by the homepage deck and /reviews.
+// The inside of one review card, shared by the homepage stage and /reviews.
 function ReviewBody({ review, linkTabIndex = 0 }: { review: Review; linkTabIndex?: number }) {
   return (
     <>
@@ -1115,8 +1123,11 @@ function ReviewBody({ review, linkTabIndex = 0 }: { review: Review; linkTabIndex
         {review.text.split("\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
       </blockquote>
       <footer>
-        <strong>{review.name}</strong>
-        <span>{[review.location, review.date].filter(Boolean).join(" · ")}</span>
+        <span className="review-avatar" aria-hidden="true">{reviewInitials(review.name)}</span>
+        <span className="review-who">
+          <strong>{review.name}</strong>
+          <span>{[review.location, review.date].filter(Boolean).join(" · ")}</span>
+        </span>
         {review.sourceUrl ? (
           <a href={review.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" tabIndex={linkTabIndex}>
             Read on {review.sourceName ?? "the review page"} →
@@ -1129,57 +1140,89 @@ function ReviewBody({ review, linkTabIndex = 0 }: { review: Review; linkTabIndex
   );
 }
 
-// Client reviews as a deck of paper cards: the top card is read, then flicked
-// to the back. Renders nothing while app/client-reviews.ts is empty.
+// Client reviews on a dark stage: one card faces the reader, its neighbours
+// stand turned at each side, and the authors' own headlines drift behind.
+// Renders nothing while app/client-reviews.ts is empty.
 function ReviewDeck() {
-  const [top, setTop] = useState(0);
+  const [front, setFront] = useState(0);
+  const [held, setHeld] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
   const total = clientReviews.length;
+
+  useEffect(() => {
+    if (total < 2 || held || reducedMotion) return;
+    const timer = window.setInterval(() => setFront((current) => (current + 1) % total), 6500);
+    return () => window.clearInterval(timer);
+  }, [held, reducedMotion, total]);
+
   if (total === 0) return null;
 
-  const step = (direction: 1 | -1) => setTop((current) => (current + direction + total) % total);
+  const step = (direction: 1 | -1) => setFront((current) => (current + direction + total) % total);
+  const place = (index: number) => {
+    const depth = (index - front + total) % total;
+    if (depth === 0) return "center";
+    if (depth === 1) return "right";
+    if (depth === total - 1) return "left";
+    return "back";
+  };
+  const headlines = clientReviews.map((review) => review.title ?? review.name);
 
   return (
-    <section className="reviews-section" id="reviews">
+    <section className="reviews-section" id="reviews" data-spotlight="">
+      <div className="reviews-ghost" aria-hidden="true">
+        {[0, 1].map((row) => (
+          <div className={`reviews-ghost-row reviews-ghost-row-${row + 1}`} key={row}>
+            {[0, 1].map((copy) => (
+              <span key={copy}>
+                {(row === 0 ? headlines : [...headlines].reverse()).map((headline) => <b key={headline}>{headline}</b>)}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+
       <div className="section reviews-inner">
         <div className="reviews-intro">
           <p className="section-kicker">Author reviews</p>
-          <h2>In their own <span className="reviews-script">words.</span></h2>
+          <h2>In their own <span className="gradient-text">words.</span></h2>
           <p>Notes our authors sent us after working together, shared here as they wrote them.</p>
-          {total > 1 && (
-            <div className="reviews-controls">
-              <button type="button" aria-label="Previous review" onClick={() => step(-1)}>←</button>
-              <button type="button" aria-label="Next review" onClick={() => step(1)}>→</button>
-              <span className="reviews-pips" aria-hidden="true">
-                {clientReviews.map((review, index) => (
-                  <i className={index === top ? "is-current" : undefined} key={reviewKey(review)} />
-                ))}
-              </span>
-            </div>
-          )}
-          <a className="text-link reviews-all" href="/reviews">Read every review →</a>
         </div>
 
-        <ol className="review-deck" aria-live="polite">
+        <ol
+          className="review-stage"
+          aria-live="polite"
+          onPointerEnter={() => setHeld(true)}
+          onPointerLeave={() => setHeld(false)}
+          onFocus={() => setHeld(true)}
+          onBlur={() => setHeld(false)}
+        >
           {clientReviews.map((review, index) => {
-            const depth = (index - top + total) % total;
-            const leaving = total > 2 && depth === total - 1;
+            const position = place(index);
             return (
-              <li
-                className={`review-card${leaving ? " is-behind" : ""}`}
-                data-depth={Math.min(depth, 3)}
-                aria-hidden={depth !== 0}
-                key={reviewKey(review)}
-              >
-                <ReviewBody review={review} linkTabIndex={depth === 0 ? 0 : -1} />
-                {depth === 0 && total > 1 && (
-                  <button className="review-card-next" type="button" onClick={() => step(1)}>
-                    <span className="visually-hidden">Next review</span>
+              <li className="review-card" data-pos={position} aria-hidden={position !== "center"} key={reviewKey(review)}>
+                <ReviewBody review={review} linkTabIndex={position === "center" ? 0 : -1} />
+                {position === "right" || position === "left" ? (
+                  <button className="review-card-turn" type="button" tabIndex={-1} onClick={() => step(position === "right" ? 1 : -1)}>
+                    <span className="visually-hidden">{position === "right" ? "Next review" : "Previous review"}</span>
                   </button>
-                )}
+                ) : null}
               </li>
             );
           })}
         </ol>
+
+        {total > 1 && (
+          <div className="reviews-controls">
+            <button type="button" aria-label="Previous review" onClick={() => step(-1)}>←</button>
+            <span className="reviews-pips" aria-hidden="true">
+              {clientReviews.map((review, index) => (
+                <i className={index === front ? "is-current" : undefined} key={reviewKey(review)} />
+              ))}
+            </span>
+            <button type="button" aria-label="Next review" onClick={() => step(1)}>→</button>
+          </div>
+        )}
+        <a className="text-link light-link reviews-all" href="/reviews">Read every review →</a>
       </div>
     </section>
   );

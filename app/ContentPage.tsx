@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Native links avoid a Vinext production navigation crash. */
+import { businessFacts } from "./business-data";
 import { ContactPanel, PortfolioGallery, ReviewWall, SiteFooter, SiteHeader } from "./PublishingSite";
 import { portfolioHrefForGenre } from "./portfolio-navigation";
 import { genres, services, type ContentPageRecord } from "./site-data";
@@ -98,7 +99,10 @@ export function ContentPage({ page }: { page: ContentPageRecord }) {
             <p className="section-kicker">Have a manuscript in progress?</p>
             <h2>Start with the stage it is in today.</h2>
           </div>
-          <a className="button button-primary" href="/#start-project">Prepare an inquiry</a>
+          <div className="page-cta-actions">
+            <a className="button button-primary" href="/#start-project">Prepare an inquiry</a>
+            <a className="button button-secondary" href={businessFacts.phone.href}>Call {businessFacts.phone.display}</a>
+          </div>
         </section>
       ) : null}
 

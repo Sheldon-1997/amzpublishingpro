@@ -442,6 +442,17 @@ test("client covers are shown as front covers and kept apart from the samples", 
   }
 });
 
+test("the header carries the phone number on every page and no dropdown arrow", async () => {
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  for (const route of ["/", "/services", "/reviews", "/privacy", "/contact"]) {
+    const html = await (await render(route)).text();
+    assert.match(html, /<a class="header-phone" href="tel:\+19092939645" aria-label="Call 909-293-9645">/, `${route} shows the number in the header`);
+  }
+  assert.doesNotMatch(css, /\.nav-dropdown > summary::after/, "the Services link has no arrow");
+  assert.match(css, /\.site-header, \.site-header--solid \{\s*position: sticky; top: 0;/, "the header stays in view while scrolling");
+  assert.match(css, /\.hero-rotation-toggle:not\(:focus-visible\)/, "the pause control is only drawn for keyboard focus");
+});
+
 test("the figure bar shows exactly the owner's figures", async () => {
   const { ownerClientStatement, ownerFigures } = await import("../app/business-data.ts");
   const html = await (await render("/")).text();
