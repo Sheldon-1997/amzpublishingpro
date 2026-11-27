@@ -37,7 +37,7 @@ test("server renders the AMZ Publishing Pro identity and canonical domain", asyn
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /From Manuscript to Published Book/);
+  assert.match(html, /<h1>From Manuscript to <span class="gradient-text">Published Book<\/span><\/h1>/);
   assert.match(html, /AMZ Publishing Pro/);
   assert.match(html, /amzpublishingpro\.com/);
   assert.match(html, /info@amzpublishingpro\.com/);
@@ -364,7 +364,7 @@ test("homepage hero animates a publishing cabinet from manuscript to published b
   assert.doesNotMatch(html, /finished-book-body/);
   assert.equal((html.match(/class="book3d" style="--book-spine:#1c2542"/g) ?? []).length, 2, "both renderings use the 3D book with the cover's spine colour");
   for (const face of ["book3d-back", "book3d-spine", "book3d-pages", "book3d-top", "book3d-bottom", "book3d-sheen"]) {
-    assert.equal((html.match(new RegExp(`class="${face}"`, "g")) ?? []).length, 2, `${face} is rendered for both book copies`);
+    assert.equal((html.match(new RegExp(`class="${face}"`, "g")) ?? []).length, 5, `${face} is rendered for both hero book copies and the three showcase books`);
   }
   assert.match(html, /class="cabinet-status cabinet-status-processing"[^>]*>In Process</);
   assert.match(html, /class="cabinet-status cabinet-status-published"[^>]*>Published</);
@@ -905,11 +905,23 @@ test("no page carries the previous brand or presents platform names as its own",
     const html = await response.text();
     assert.doesNotMatch(html, /Amazon Kindle (?:Service|Pro)|amazonkindle/i, `${route} must not carry the previous brand`);
     assert.doesNotMatch(html, /linkedin\.com\/company\/amazonkindleservice/i);
-    const visible = html.replace(/<script[\s\S]*?<\/script>/g, "");
-    const platformMentions = visible.match(/Amazon|Kindle|KDP/g) ?? [];
+    let visible = html.replace(/<script[\s\S]*?<\/script>/g, "");
     const disclaimerCount = (visible.match(/not affiliated with, endorsed by, or sponsored by Amazon, Kindle, KDP/g) ?? []).length;
     assert.ok(disclaimerCount >= 1, `${route} must show the independence statement`);
-    assert.equal(platformMentions.length, disclaimerCount * 3, `${route} may name those platforms only inside the independence statement`);
+    // The homepage has one section that describes publishing on Amazon KDP as a service.
+    const kdpStart = visible.indexOf('<section class="kdp-section"');
+    if (route === "/") {
+      assert.ok(kdpStart > -1, "the homepage describes the Amazon KDP service");
+      const kdpEnd = visible.indexOf("</section>", kdpStart);
+      visible = visible.slice(0, kdpStart) + visible.slice(kdpEnd);
+    } else {
+      assert.equal(kdpStart, -1);
+    }
+    const platformMentions = visible.match(/Amazon|Kindle|KDP/g) ?? [];
+    const footerNavMentions = (visible.match(/>KDP setup</g) ?? []).length;
+    assert.equal(platformMentions.length - footerNavMentions, disclaimerCount * 3, `${route} names those platforms only in the KDP section and the independence statement`);
+    assert.doesNotMatch(html, /<img[^>]*(?:src|alt)="[^"]*(?:amazon|kindle|kdp)[^"]*"/i, `${route} must not show a platform logo or screenshot`);
+    assert.doesNotMatch(html, /We(?:'|&#x27;)re the Amazon|Amazon Book Publishing (?:Professionals|Company|Experts)|official Amazon|Amazon partner/i, `${route} must not present the business as Amazon`);
   }
 });
 
@@ -960,4 +972,44 @@ test("every page carries the seasonal layer without inventing a sale", async () 
     const ribbon = html.slice(html.indexOf('<aside class="season-ribbon"'), html.indexOf("</aside>"));
     assert.doesNotMatch(ribbon, /\bsale\b|discount|% ?off|\bdeal\b|coupon|limited time|\bfree\b/i, "greetings must not promise an offer that does not exist");
   }
+});
+
+test("the Amazon KDP section describes a service, states independence, and makes no unverified claims", async () => {
+  const html = await (await render("/")).text();
+  const start = html.indexOf('<section class="kdp-section"');
+  const section = html.slice(start, html.indexOf("</section>", start));
+
+  assert.match(section, /id="amazon-kdp"/);
+  assert.match(section, /We help authors publish on <span class="gradient-text">Amazon KDP<\/span>/);
+  assert.match(section, /Kindle Direct Publishing \(KDP\) is Amazon(?:'|&#x27;)s self-publishing platform/);
+  assert.match(section, /in your own KDP account, so the book, the files, and the royalties stay with you/);
+  assert.match(section, /is an independent company and is not affiliated with Amazon/);
+  assert.equal((section.match(/class="kdp-step"/g) ?? []).length, 6);
+  for (const step of ["Ghostwriting", "Developmental editing", "Copyediting and proofreading", "Cover design", "Formatting", "KDP setup and publishing"]) {
+    assert.match(section, new RegExp(`<h3>${step}</h3>`));
+  }
+  assert.match(section, /class="kdp-stage" aria-hidden="true"/, "the floating books are decorative");
+  assert.match(section, />Sample covers</);
+
+  // No statistics or testimonials are published until they can be backed by records.
+  assert.doesNotMatch(html, /\b\d[\d,]*\+\s*(?:<[^>]+>\s*)*(?:Books|Best|Clients|Team|Dedicated)/i);
+  assert.doesNotMatch(html, /100%\s*(?:<[^>]+>\s*)*Client Satisfaction|best-?sellers?\b|testimonial/i);
+});
+
+test("the page ships the modern layer with reduced-motion fallbacks", async () => {
+  const html = await (await render("/")).text();
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(html, /<div class="scroll-progress" aria-hidden="true"><\/div>/);
+  assert.equal((html.match(/class="service-ribbon-group"/g) ?? []).length, 2);
+  assert.match(html, /class="service-ribbon-group" aria-hidden="true"/, "the repeated marquee copy is hidden from assistive technology");
+  assert.equal((html.match(/class="service-card" data-tilt=""/g) ?? []).length, 8);
+  assert.match(html, /class="process-section" id="process" data-spotlight=""/);
+
+  assert.match(css, /@supports \(animation-timeline: scroll\(\)\)/);
+  assert.match(css, /\.portfolio-slider \.book-card \{ animation: coverflow linear both; animation-timeline: view\(inline\); \}/);
+  const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+  assert.match(reduced, /\.service-ribbon-track \{[^}]*animation: none/);
+  assert.match(reduced, /\.gradient-text, \.kdp-orbit, \.kdp-book \.book3d \{ animation: none; \}/);
+  assert.match(reduced, /\[data-tilt\], \.service-card\[data-tilt\]:hover \{ transform: none/);
 });

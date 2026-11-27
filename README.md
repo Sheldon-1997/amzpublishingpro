@@ -12,7 +12,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 
 | Item | State |
 | --- | --- |
-| Source rebrand | Done, 38 tests pass on a fresh build |
+| Source rebrand | Done, 40 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
 | Live site | Published with GitHub Pages at https://amzpublishingpro.com/ on 27 November 2026 |
 | HTTPS | Certificate issued and "Enforce HTTPS" is on; `http` and `www` redirect to `https://amzpublishingpro.com` |
@@ -31,7 +31,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # local preview
-pnpm test         # production build + 38 tests
+pnpm test         # production build + 40 tests
 pnpm lint
 ```
 
@@ -99,6 +99,28 @@ forward over the lip, grows, and turns to face the viewer. The whole scene
 leans a few degrees toward the pointer on desktop. Gallery covers swing open
 on hover, and sections rise into view on scroll in browsers that support
 scroll-driven animations.
+
+## Amazon KDP section, statistics, and testimonials
+
+The homepage has one section (`KdpSection` in `app/PublishingSite.tsx`) that
+describes publishing on Amazon KDP as a service the business provides in the
+author's own KDP account. It states that the company is independent and not
+affiliated with Amazon. The site shows no Amazon logo, storefront screenshot,
+or wording that presents the business as Amazon; tests enforce this.
+
+The site publishes no performance statistics and no testimonials. Add them
+only when each figure can be backed by records and each testimonial comes
+from a real client of this business who agreed to be quoted. A test fails if
+unverified figures or testimonials are added by accident.
+
+## Modern layer
+
+- Scroll progress bar, coverflow gallery, and section reveals use CSS
+  scroll-driven animations where the browser supports them.
+- Cards marked `data-tilt` lean toward the pointer; sections marked
+  `data-spotlight` light up under it (`usePointerDepth`).
+- The service ribbon is a marquee that pauses on hover.
+- Everything has a reduced-motion fallback.
 
 ## Cover samples
 

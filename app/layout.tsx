@@ -41,6 +41,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script id="season-bootstrap" dangerouslySetInnerHTML={{ __html: seasonBootstrapScript() }} />
       </head>
       <body>
+        <div className="scroll-progress" aria-hidden="true" />
         <SeasonRibbon />
         {children}
         <SeasonEffects />

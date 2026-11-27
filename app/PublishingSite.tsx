@@ -919,8 +919,139 @@ function HeroBookRotator() {
   );
 }
 
+const kdpSteps = [
+  { title: "Ghostwriting", text: "Turn your idea, notes, or recordings into a complete manuscript in your voice." },
+  { title: "Developmental editing", text: "Fix structure, pacing, and clarity before the line-level work begins." },
+  { title: "Copyediting and proofreading", text: "Correct grammar, consistency, and typos so the final text reads cleanly." },
+  { title: "Cover design", text: "A front cover for the eBook and a full wrap sized for your print trim and page count." },
+  { title: "Formatting", text: "Interior files for eBook, paperback, and hardcover that pass KDP's file checks." },
+  { title: "KDP setup and publishing", text: "Title details, description, categories, keywords, pricing, and upload in your own KDP account." },
+] as const;
+
+const kdpShowcase = [
+  { id: "fantasy-01", spine: "#2a1440" },
+  { id: "romance-03", spine: "#0d4f58" },
+  { id: "nonfiction-02", spine: "#213547" },
+] as const;
+
+// Pointer effects shared by the whole page: cards marked data-tilt lean toward
+// the cursor, and sections marked data-spotlight get a soft light under it.
+function usePointerDepth() {
+  const reducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    let frame = 0;
+    let lastTilt: HTMLElement | null = null;
+    const reset = (element: HTMLElement | null) => {
+      if (!element) return;
+      element.style.setProperty("--tilt-rx", "0");
+      element.style.setProperty("--tilt-ry", "0");
+    };
+    const onMove = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const tilt = target.closest<HTMLElement>("[data-tilt]");
+        if (tilt !== lastTilt) reset(lastTilt);
+        lastTilt = tilt;
+        if (tilt) {
+          const box = tilt.getBoundingClientRect();
+          const x = (event.clientX - box.left) / box.width;
+          const y = (event.clientY - box.top) / box.height;
+          tilt.style.setProperty("--tilt-rx", ((x - 0.5) * 2).toFixed(3));
+          tilt.style.setProperty("--tilt-ry", ((y - 0.5) * 2).toFixed(3));
+          tilt.style.setProperty("--glare-x", `${(x * 100).toFixed(1)}%`);
+          tilt.style.setProperty("--glare-y", `${(y * 100).toFixed(1)}%`);
+        }
+        const spotlight = target.closest<HTMLElement>("[data-spotlight]");
+        if (spotlight) {
+          const box = spotlight.getBoundingClientRect();
+          spotlight.style.setProperty("--spot-x", `${(event.clientX - box.left).toFixed(0)}px`);
+          spotlight.style.setProperty("--spot-y", `${(event.clientY - box.top).toFixed(0)}px`);
+        }
+      });
+    };
+    const onLeave = () => {
+      window.cancelAnimationFrame(frame);
+      reset(lastTilt);
+      lastTilt = null;
+    };
+
+    document.addEventListener("pointermove", onMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("pointermove", onMove);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
+    };
+  }, [reducedMotion]);
+}
+
+function KdpSection() {
+  return (
+    <section className="kdp-section" id="amazon-kdp" data-spotlight="">
+      <div className="section kdp-inner">
+        <div className="kdp-copy">
+          <p className="section-kicker">Amazon KDP publishing support</p>
+          <h2>We help authors publish on <span className="gradient-text">Amazon KDP</span>, from first draft to live listing.</h2>
+          <p>
+            Kindle Direct Publishing (KDP) is Amazon&apos;s self-publishing platform. We prepare everything your book
+            needs to go live there: the writing and editing, the cover, the formatted files, and the listing itself.
+            The work is done in your own KDP account, so the book, the files, and the royalties stay with you.
+          </p>
+          <div className="kdp-actions">
+            <button className="button button-primary" type="button" onClick={requestProjectInquiry}>Plan my KDP release</button>
+            <a className="button button-ghost" href="/book-publishing">How publishing setup works</a>
+          </div>
+          <p className="kdp-note">
+            {businessFacts.name} is an independent company and is not affiliated with Amazon. Listing approval, royalties,
+            rankings, and sales are decided by KDP&apos;s rules and by readers.
+          </p>
+        </div>
+
+        <div className="kdp-stage" aria-hidden="true">
+          <div className="kdp-orbit" />
+          {kdpShowcase.map((book, index) => (
+            <span className={`kdp-book kdp-book-${index + 1}`} key={book.id}>
+              <span className="book3d" style={{ "--book-spine": book.spine } as CSSProperties}>
+                <span className="book3d-back" />
+                <span className="book3d-spine" />
+                <span className="book3d-pages" />
+                <span className="book3d-top" />
+                <span className="book3d-bottom" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="kdp-book-cover" src={`/sample-covers/${book.id}.webp`} alt="" width="640" height="960" loading="lazy" decoding="async" />
+                <span className="book3d-sheen" />
+              </span>
+            </span>
+          ))}
+          <span className="kdp-stage-caption">Sample covers</span>
+        </div>
+      </div>
+
+      <div className="section kdp-path">
+        <ol className="kdp-steps">
+          {kdpSteps.map((step, index) => (
+            <li className="kdp-step" data-tilt="" key={step.title}>
+              <span className="kdp-step-number">{String(index + 1).padStart(2, "0")}</span>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="kdp-path-note">Hire one stage or the whole path. Each stage has a written scope before work starts.</p>
+      </div>
+    </section>
+  );
+}
+
 export function PublishingSite() {
   const supportedGenres = useMemo(() => genres.filter((genre) => genre !== "All"), []);
+  usePointerDepth();
 
   useEffect(() => {
     const prefetchedRoutes = new Set<string>();
@@ -973,7 +1104,7 @@ export function PublishingSite() {
         <div className="hero-inner" id="main-content">
           <div className="hero-copy">
             <p className="eyebrow">Independent publishing services</p>
-            <h1>From Manuscript to Published Book</h1>
+            <h1>From Manuscript to <span className="gradient-text">Published Book</span></h1>
             <p className="hero-lede">
               {businessFacts.description}
             </p>
@@ -994,13 +1125,23 @@ export function PublishingSite() {
       </section>
 
       <section className="service-ribbon" aria-label="Core services">
-        <span>Book publishing</span>
-        <span>Cover design</span>
-        <span>Structural editing</span>
-        <span>Book formatting</span>
-        <span>Ghostwriting</span>
-        <span>Author brand content</span>
+        <div className="service-ribbon-track">
+          {[0, 1].map((copy) => (
+            <div className="service-ribbon-group" aria-hidden={copy === 1} key={copy}>
+              <span>Book publishing</span>
+              <span>Cover design</span>
+              <span>Structural editing</span>
+              <span>Book formatting</span>
+              <span>Ghostwriting</span>
+              <span>Author brand content</span>
+              <span>Copyediting</span>
+              <span>KDP setup</span>
+            </div>
+          ))}
+        </div>
       </section>
+
+      <KdpSection />
 
       <section className="section services-section" id="services">
         <div className="section-heading">
@@ -1012,7 +1153,7 @@ export function PublishingSite() {
         </div>
         <div className="services-grid">
           {services.map((service) => (
-            <a className="service-card" href={service.href} key={service.title}>
+            <a className="service-card" data-tilt="" href={service.href} key={service.title}>
               <span className="service-mark" aria-hidden="true" />
               <h3>{service.title}</h3>
               <p>{service.summary}</p>
@@ -1022,7 +1163,7 @@ export function PublishingSite() {
         </div>
       </section>
 
-      <section className="process-section" id="process">
+      <section className="process-section" id="process" data-spotlight="">
         <div className="section process-inner">
           <div className="process-intro">
             <p className="section-kicker">A practical production path</p>
