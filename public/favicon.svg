@@ -1,7 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>AMZ Publishing Pro</title>
-  <rect width="64" height="64" rx="13" fill="#14204a"/>
-  <path d="M32 21c-5-4-11-5-18-4v26c7-1 13 0 18 4 5-4 11-5 18-4V17c-7-1-13 0-18 4z" fill="#ffffff"/>
-  <path d="M32 21v26" stroke="#14204a" stroke-width="2.5"/>
-  <path d="M39 14h8v16l-4-3-4 3z" fill="#e3b548"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="title">
+<title id="title">AMZ Publishing Pro favicon</title>
+<rect x="0" y="0" width="64" height="64" rx="11" fill="#15214A"/><g transform="translate(13.283 52.362) scale(0.431)"><path fill="#FFFFFF" d="M0.503 0 28.297 -94.38H58.601L86.252 0H61.742L43.701 -76.127H42.774L24.831 0ZM17.52 -16.491V-32.312H71.203V-16.491Z"/></g>
 </svg>

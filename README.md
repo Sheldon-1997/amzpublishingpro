@@ -12,7 +12,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 
 | Item | State |
 | --- | --- |
-| Source rebrand | Done, 40 tests pass on a fresh build |
+| Source rebrand | Done, 43 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
 | Live site | Published with GitHub Pages at https://amzpublishingpro.com/ on 27 November 2026 |
 | HTTPS | Certificate issued and "Enforce HTTPS" is on; `http` and `www` redirect to `https://amzpublishingpro.com` |
@@ -31,7 +31,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # local preview
-pnpm test         # production build + 40 tests
+pnpm test         # production build + 43 tests
 pnpm lint
 ```
 
@@ -46,8 +46,12 @@ dependencies as part of unrelated work.
 - `app/site-data.ts` — services and the 20 content pages (including Terms and
   Privacy).
 - `app/PublishingSite.tsx` — homepage, header, footer, gallery, inquiry form,
-  hero animation markup.
-- `app/globals.css` — all styling, including the hero animation keyframes.
+  hero stage, client covers shelf, review deck.
+- `app/hero-scene.ts` — the WebGL hero scene (three.js), loaded on demand.
+- `app/BrandLogo.tsx`, `public/brand/` — the logo from the owner's logo pack.
+- `app/client-covers.ts`, `public/client-covers/` — covers designed for clients.
+- `app/client-reviews.ts` — sourced client reviews (empty until verified).
+- `app/globals.css` — all styling.
 - `app/cover-catalog.ts`, `app/hero-publishing-covers.ts` — sample cover data.
 - `app/site-redirects.ts` — 15 permanent redirects for legacy paths.
 - `worker/index.ts` — request entry: `www` to apex redirect, legacy redirects,
@@ -93,12 +97,34 @@ sale, discount, or deal.
 
 ## Hero animation
 
-The finished book in the hero is a CSS 3D object (`.book3d`: cover, spine,
-page block, back). It starts dim inside the FINISHED BOOK opening, comes
-forward over the lip, grows, and turns to face the viewer. The whole scene
-leans a few degrees toward the pointer on desktop. Gallery covers swing open
-on hover, and sections rise into view on scroll in browsers that support
-scroll-driven animations.
+The hero is a WebGL scene (`app/hero-scene.ts`, three.js): a hardcover book
+with real lighting, reflections and a cast shadow. It turns slowly, then lies
+back and opens, its pages lift into a spiral and settle again, and it closes
+as the next sample book. The camera leans toward the pointer on desktop.
+
+- The server renders a still CSS book (`.hero-poster`). The scene replaces it
+  only after the page has loaded, so three.js never delays the first paint.
+- Visitors who ask for reduced motion, and browsers without WebGL, keep the
+  still book.
+- The scene stops rendering when it is off screen, the tab is hidden, or the
+  visitor presses Pause.
+
+## Logo
+
+The logo comes from the owner's logo pack. `BrandLogo` draws it inline: the
+"AMZ PUBLISHING" letters use the current text colour so they follow the theme,
+and "PRO" is always the brand gold (`#E9C664` on dark backgrounds). Do not
+recolour "PRO". The pack's favicon and 1200x630 share image are in `public/`.
+
+## Client covers and reviews
+
+`app/client-covers.ts` lists covers designed for clients. Only the front panel
+of each print wrap is published, never the back-cover text. Add a cover only
+when its author has agreed to it being shown.
+
+`app/client-reviews.ts` feeds the homepage review deck. The section stays
+hidden while the list is empty. Add a review only if it is posted on a public
+review profile of this business, copy it word for word, and include the link.
 
 ## Amazon KDP section, statistics, and testimonials
 
@@ -108,10 +134,11 @@ author's own KDP account. It states that the company is independent and not
 affiliated with Amazon. The site shows no Amazon logo, storefront screenshot,
 or wording that presents the business as Amazon; tests enforce this.
 
-The site publishes no performance statistics and no testimonials. Add them
-only when each figure can be backed by records and each testimonial comes
-from a real client of this business who agreed to be quoted. A test fails if
-unverified figures or testimonials are added by accident.
+The site publishes no performance statistics. Add them only when each figure
+can be backed by records. Reviews follow the rules under "Client covers and
+reviews" above. A test fails if unverified figures are added by accident.
+
+Section items carry no running numbers ("01", "02"); a test enforces this.
 
 ## Modern layer
 

@@ -2,7 +2,10 @@
 
 /* eslint-disable @next/next/no-html-link-for-pages -- Native links avoid a Vinext production navigation crash. */
 import { type CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BrandLogo } from "./BrandLogo";
 import { buildOrganizationStructuredData, businessFacts } from "./business-data";
+import { clientCovers } from "./client-covers";
+import { clientReviews } from "./client-reviews";
 import { heroPublishingCovers } from "./hero-publishing-covers";
 import { genreFromUrl, portfolioHrefForGenre } from "./portfolio-navigation";
 import { books, genres, services, type BookItem } from "./site-data";
@@ -107,7 +110,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
   return (
     <header className={`site-header${solid ? " site-header--solid" : ""}`}>
       <a className="wordmark" href="/" aria-label={`${businessFacts.name} home`}>
-        <span>AMZ Publishing</span> <strong>Pro</strong>
+        <BrandLogo className="brand-logo" />
       </a>
 
       <nav className="primary-nav" aria-label="Primary navigation">
@@ -599,8 +602,8 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="footer-grid">
         <div className="footer-brand">
-          <a className="wordmark" href="/">
-            <span>AMZ Publishing</span> <strong>Pro</strong>
+          <a className="wordmark" href="/" aria-label={`${businessFacts.name} home`}>
+            <BrandLogo className="brand-logo" />
           </a>
           <p>Publishing services for independent authors, from manuscript review through final files.</p>
           <p className="footer-trust">{businessFacts.trustStatement}</p>
@@ -642,8 +645,10 @@ export function SiteFooter() {
 }
 
 type HeroCover = (typeof heroPublishingCovers)[number];
+type HeroSceneHandle = import("./hero-scene").HeroSceneHandle;
 
-// A real 3D book built from CSS faces: front cover, spine, page block and back.
+// A book built from CSS faces. The KDP section uses it for its sample books and
+// the hero uses it as the still picture shown before (or instead of) WebGL.
 function HeroBook3D({ cover }: { cover: HeroCover }) {
   return (
     <figure className="published-book">
@@ -671,102 +676,104 @@ function HeroBook3D({ cover }: { cover: HeroCover }) {
   );
 }
 
-function HeroBookRotator() {
-  const [heroCoverIndex, setHeroCoverIndex] = useState(1);
-  const [rotationPaused, setRotationPaused] = useState(false);
-  const [sceneVisible, setSceneVisible] = useState(true);
+// The hero visual. The server renders a still book; in the browser a WebGL
+// scene (app/hero-scene.ts) takes over when motion is allowed and WebGL works.
+function HeroBookStage() {
+  const [coverIndex, setCoverIndex] = useState(1);
+  const [paused, setPaused] = useState(false);
+  const [live, setLive] = useState(false);
+  const [stageVisible, setStageVisible] = useState(true);
   const [documentVisible, setDocumentVisible] = useState(true);
   const reducedMotion = usePrefersReducedMotion();
-  const sceneRef = useRef<HTMLDivElement>(null);
-  const warmedCoversRef = useRef(new Set<string>());
+  const stageRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sceneRef = useRef<HeroSceneHandle | null>(null);
+  const startIndexRef = useRef(coverIndex);
 
   useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene || !("IntersectionObserver" in window)) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setSceneVisible(entry.isIntersecting),
-      { threshold: 0.1 },
-    );
-    observer.observe(scene);
+    const stage = stageRef.current;
+    if (!stage || !("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver(([entry]) => setStageVisible(entry.isIntersecting), { threshold: 0.05 });
+    observer.observe(stage);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    const updateDocumentVisibility = () => setDocumentVisible(!document.hidden);
-    updateDocumentVisibility();
-    document.addEventListener("visibilitychange", updateDocumentVisibility);
-    return () => document.removeEventListener("visibilitychange", updateDocumentVisibility);
+    const update = () => setDocumentVisible(!document.hidden);
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
   }, []);
 
+  // Load three.js only after the page is interactive, and never for visitors
+  // who asked for reduced motion.
   useEffect(() => {
-    if (reducedMotion || !sceneVisible || !documentVisible) return;
+    const canvas = canvasRef.current;
+    if (!canvas || reducedMotion) return;
 
-    let delayTimer = 0;
-    let idleCallback = 0;
-    const warmNextCovers = () => {
-      [1, 2].forEach((offset) => {
-        const cover = heroPublishingCovers[(heroCoverIndex + offset) % heroPublishingCovers.length];
-        if (warmedCoversRef.current.has(cover.src)) return;
-        warmedCoversRef.current.add(cover.src);
-        const image = new Image();
-        image.src = cover.src;
-        void image.decode?.().catch(() => undefined);
-      });
+    let cancelled = false;
+    let timer = 0;
+    const boot = async () => {
+      try {
+        const { createHeroScene } = await import("./hero-scene");
+        if (cancelled) return;
+        sceneRef.current = createHeroScene({
+          canvas,
+          covers: heroPublishingCovers,
+          startIndex: startIndexRef.current,
+          onCoverChange: (index) => {
+            startIndexRef.current = index;
+            setCoverIndex(index);
+          },
+          onReady: () => setLive(true),
+          onLost: () => setLive(false),
+        });
+      } catch {
+        // The still book stays in place.
+      }
     };
-    const scheduleIdleWarmup = () => {
-      delayTimer = window.setTimeout(() => {
-        if ("requestIdleCallback" in window) {
-          idleCallback = window.requestIdleCallback(warmNextCovers, { timeout: 1800 });
-        } else {
-          delayTimer = window.setTimeout(warmNextCovers, 500);
-        }
-      }, 1200);
-    };
-
-    if (document.readyState === "complete") scheduleIdleWarmup();
-    else window.addEventListener("load", scheduleIdleWarmup, { once: true });
+    const schedule = () => { timer = window.setTimeout(() => void boot(), 250); };
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
 
     return () => {
-      window.removeEventListener("load", scheduleIdleWarmup);
-      window.clearTimeout(delayTimer);
-      if (idleCallback && "cancelIdleCallback" in window) window.cancelIdleCallback(idleCallback);
-    };
-  }, [documentVisible, heroCoverIndex, reducedMotion, sceneVisible]);
-
-  // Pointer tilt: the whole scene leans a few degrees toward the cursor.
-  useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene || reducedMotion) return;
-    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-
-    let frame = 0;
-    const setTilt = (x: number, y: number) => {
-      window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        scene.style.setProperty("--tilt-x", x.toFixed(3));
-        scene.style.setProperty("--tilt-y", y.toFixed(3));
-      });
-    };
-    const onMove = (event: PointerEvent) => {
-      const box = scene.getBoundingClientRect();
-      const x = ((event.clientX - box.left) / box.width - 0.5) * 2;
-      const y = ((event.clientY - box.top) / box.height - 0.5) * 2;
-      setTilt(Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)));
-    };
-    const onLeave = () => setTilt(0, 0);
-
-    scene.addEventListener("pointermove", onMove);
-    scene.addEventListener("pointerleave", onLeave);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      scene.removeEventListener("pointermove", onMove);
-      scene.removeEventListener("pointerleave", onLeave);
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("load", schedule);
+      sceneRef.current?.dispose();
+      sceneRef.current = null;
+      setLive(false);
     };
   }, [reducedMotion]);
 
-  const activeCover = heroPublishingCovers[heroCoverIndex];
-  const motionStopped = reducedMotion || rotationPaused || !sceneVisible || !documentVisible;
+  const running = live && !paused && stageVisible && documentVisible;
+  useEffect(() => {
+    sceneRef.current?.setRunning(running);
+  }, [running]);
+
+  // The camera and the book lean toward the pointer anywhere over the hero.
+  useEffect(() => {
+    if (!live) return;
+    const hero = stageRef.current?.closest<HTMLElement>(".hero");
+    if (!hero || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    const onMove = (event: PointerEvent) => {
+      const box = hero.getBoundingClientRect();
+      sceneRef.current?.setPointer(
+        ((event.clientX - box.left) / box.width - 0.5) * 2,
+        ((event.clientY - box.top) / box.height - 0.5) * 2,
+      );
+    };
+    const onLeave = () => sceneRef.current?.setPointer(0, 0);
+    hero.addEventListener("pointermove", onMove, { passive: true });
+    hero.addEventListener("pointerleave", onLeave);
+    return () => {
+      hero.removeEventListener("pointermove", onMove);
+      hero.removeEventListener("pointerleave", onLeave);
+    };
+  }, [live]);
+
+  const activeCover = heroPublishingCovers[coverIndex];
 
   return (
     <div
@@ -774,147 +781,37 @@ function HeroBookRotator() {
       role="region"
       data-cover-count={heroPublishingCovers.length}
       data-active-genre={activeCover.genre}
-      data-visual="publishing-cabinet"
-      aria-label="Manuscript to published book illustration"
+      data-visual="book-studio"
+      aria-label="Sample book illustration"
       aria-describedby="hero-publishing-description"
-      className={`hero-books${motionStopped ? " is-paused" : ""}${reducedMotion ? " is-reduced-motion" : ""}`}
-      ref={sceneRef}
+      className={`hero-books${live ? " is-live" : ""}${paused ? " is-paused" : ""}${reducedMotion ? " is-reduced-motion" : ""}`}
+      ref={stageRef}
     >
       <p className="visually-hidden" id="hero-publishing-description">
-        A manuscript slides into the cabinet, the processing light turns yellow, and a finished book slides out and turns to show its cover as the light turns green. The sequence repeats across ten sample covers.
+        A hardcover sample book turns slowly in the light. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next sample book. The sequence repeats across ten sample covers.
       </p>
       <div className="hero-art-backdrop" aria-hidden="true" />
-      <div className="hero-scene-floor" aria-hidden="true" />
-      <div id="hero-publishing-motion" className="hero-motion-cycle">
-        <span
-          className="hero-cycle-clock"
-          aria-hidden="true"
-          onAnimationIteration={() => {
-            if (!motionStopped) {
-              setHeroCoverIndex((current) => (current + 1) % heroPublishingCovers.length);
-            }
-          }}
-        />
-        <div className="publishing-cabinet-scene">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="publishing-cabinet-shell"
-            src="/hero-publishing/cabinet-shell.webp"
-            alt=""
-            width="1024"
-            height="683"
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
-            aria-hidden="true"
-          />
-
-          <div
-            className="cabinet-manuscript-region cabinet-manuscript-slot"
-            data-hero-mask="input-aperture"
-            data-input-region="inside-slot"
-            aria-hidden="true"
-          >
-            <div className="cabinet-manuscript-track">
-              <div className="cabinet-manuscript">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/hero-publishing/manuscript-stack.webp"
-                  alt=""
-                  width="640"
-                  height="427"
-                  loading="eager"
-                  decoding="async"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="cabinet-manuscript-region cabinet-manuscript-exterior"
-            data-input-region="exterior"
-            aria-hidden="true"
-          >
-            <div className="cabinet-manuscript-track">
-              <div className="cabinet-manuscript">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/hero-publishing/manuscript-stack.webp"
-                  alt=""
-                  width="640"
-                  height="427"
-                  loading="eager"
-                  decoding="async"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="cabinet-lamp" aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className="cabinet-lamp-state cabinet-lamp-processing"
-              src="/hero-publishing/lamp-processing.webp"
-              alt=""
-              width="42"
-              height="42"
-              loading="eager"
-              decoding="async"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className="cabinet-lamp-state cabinet-lamp-published"
-              src="/hero-publishing/lamp-published.webp"
-              alt=""
-              width="42"
-              height="42"
-              loading="eager"
-              decoding="async"
-            />
-          </div>
-
-          <span className="cabinet-status cabinet-status-processing" aria-hidden="true">In Process</span>
-          <span className="cabinet-status cabinet-status-published" aria-hidden="true">Published</span>
-
-          <div
-            className="published-output-region published-output-slot"
-            data-output-region="inside-slot"
-            aria-hidden="true"
-          >
-            <div className="published-output-track">
-              <div className="published-output">
-                <span className="visually-hidden">Finished Book</span>
-                <HeroBook3D cover={activeCover} />
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="published-output-region published-output-exterior"
-            data-output-region="exterior"
-            aria-hidden="true"
-          >
-            <div className="published-output-track">
-              <div className="published-output">
-                <HeroBook3D cover={activeCover} />
-              </div>
-            </div>
-          </div>
+      <div id="hero-publishing-motion" className="hero-stage">
+        <div className="hero-poster" aria-hidden="true">
+          <HeroBook3D cover={activeCover} />
         </div>
+        <canvas className="hero-stage-canvas" ref={canvasRef} aria-hidden="true" />
       </div>
-      <button
-        className="hero-rotation-toggle"
-        type="button"
-        aria-controls="hero-publishing-motion"
-        aria-label={reducedMotion
-          ? "Manuscript to book animation disabled by device preference"
-          : rotationPaused ? "Resume manuscript to book animation" : "Pause manuscript to book animation"}
-        aria-pressed={rotationPaused || reducedMotion}
-        disabled={reducedMotion}
-        onClick={() => setRotationPaused((current) => !current)}
-      >
-        {reducedMotion ? "Motion off" : rotationPaused ? "Resume" : "Pause"}
-      </button>
+      <p className="hero-stage-caption" aria-hidden="true">
+        <span>{activeCover.genre}</span> Sample cover
+      </p>
+      {!reducedMotion && (
+        <button
+          className="hero-rotation-toggle"
+          type="button"
+          aria-controls="hero-publishing-motion"
+          aria-label={paused ? "Resume book animation" : "Pause book animation"}
+          aria-pressed={paused}
+          onClick={() => setPaused((current) => !current)}
+        >
+          {paused ? "Resume" : "Pause"}
+        </button>
+      )}
     </div>
   );
 }
@@ -1034,16 +931,112 @@ function KdpSection() {
       </div>
 
       <div className="section kdp-path">
-        <ol className="kdp-steps">
-          {kdpSteps.map((step, index) => (
-            <li className="kdp-step" data-tilt="" key={step.title}>
-              <span className="kdp-step-number">{String(index + 1).padStart(2, "0")}</span>
+        <ul className="kdp-steps">
+          {kdpSteps.map((step) => (
+            <li className="kdp-step" key={step.title}>
               <h3>{step.title}</h3>
               <p>{step.text}</p>
             </li>
           ))}
-        </ol>
+        </ul>
         <p className="kdp-path-note">Hire one stage or the whole path. Each stage has a written scope before work starts.</p>
+      </div>
+    </section>
+  );
+}
+
+// Covers made for clients, standing on a shelf. Each one leans toward the pointer.
+function ClientCovers() {
+  if (clientCovers.length === 0) return null;
+
+  return (
+    <section className="section client-covers-section" id="client-covers">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Client projects</p>
+          <h2>Covers we designed for our authors.</h2>
+        </div>
+        <p>Front covers from finished print files. Every title belongs to its author.</p>
+      </div>
+      <ul className="client-shelf">
+        {clientCovers.map((cover) => (
+          <li key={cover.slug}>
+            <figure className="client-cover" data-tilt="">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={cover.src} alt={`${cover.title} by ${cover.author}, front cover`} width={cover.width} height={cover.height} loading="lazy" decoding="async" />
+            </figure>
+            <span className="client-shelf-edge" aria-hidden="true" />
+            <p className="client-cover-title">{cover.title}</p>
+            <p className="client-cover-author">{cover.author}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// Client reviews as a deck of paper cards: the top card is read, then flicked
+// to the back. Renders nothing until app/client-reviews.ts has sourced entries.
+function ReviewDeck() {
+  const [top, setTop] = useState(0);
+  const total = clientReviews.length;
+  if (total === 0) return null;
+
+  const step = (direction: 1 | -1) => setTop((current) => (current + direction + total) % total);
+
+  return (
+    <section className="reviews-section" id="reviews">
+      <div className="section reviews-inner">
+        <div className="reviews-intro">
+          <p className="section-kicker">Author reviews</p>
+          <h2>In their own <span className="reviews-script">words.</span></h2>
+          <p>Each review is shown exactly as the author posted it, with a link to the original.</p>
+          {total > 1 && (
+            <div className="reviews-controls">
+              <button type="button" aria-label="Previous review" onClick={() => step(-1)}>←</button>
+              <button type="button" aria-label="Next review" onClick={() => step(1)}>→</button>
+              <span className="reviews-pips" aria-hidden="true">
+                {clientReviews.map((review, index) => (
+                  <i className={index === top ? "is-current" : undefined} key={review.sourceUrl + review.name} />
+                ))}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <ol className="review-deck" aria-live="polite">
+          {clientReviews.map((review, index) => {
+            const depth = (index - top + total) % total;
+            const leaving = total > 2 && depth === total - 1;
+            return (
+              <li
+                className={`review-card${leaving ? " is-behind" : ""}`}
+                data-depth={Math.min(depth, 3)}
+                aria-hidden={depth !== 0}
+                key={review.sourceUrl + review.name}
+              >
+                <span className="review-quote-mark" aria-hidden="true">“</span>
+                <span className="review-stars" role="img" aria-label={`${review.rating} out of 5 stars`}>
+                  {"★".repeat(review.rating)}
+                </span>
+                {review.title && <h3>{review.title}</h3>}
+                <blockquote>{review.text}</blockquote>
+                <footer>
+                  <strong>{review.name}</strong>
+                  <span>{[review.location, review.date].filter(Boolean).join(" · ")}</span>
+                  <a href={review.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" tabIndex={depth === 0 ? 0 : -1}>
+                    Read on {review.sourceName} →
+                  </a>
+                </footer>
+                {depth === 0 && total > 1 && (
+                  <button className="review-card-next" type="button" onClick={() => step(1)}>
+                    <span className="visually-hidden">Next review</span>
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </section>
   );
@@ -1120,7 +1113,7 @@ export function PublishingSite() {
             </div>
           </div>
 
-          <HeroBookRotator />
+          <HeroBookStage />
         </div>
       </section>
 
@@ -1180,6 +1173,8 @@ export function PublishingSite() {
         </div>
       </section>
 
+      <ClientCovers />
+
       <section className="section portfolio-section" id="portfolio">
         <div className="section-heading">
           <div>
@@ -1190,6 +1185,8 @@ export function PublishingSite() {
         </div>
         <PortfolioGallery />
       </section>
+
+      <ReviewDeck />
 
       <section className="genre-section" id="genres">
         <div className="section genre-inner">

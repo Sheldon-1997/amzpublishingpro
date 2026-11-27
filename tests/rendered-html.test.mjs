@@ -341,12 +341,12 @@ test("rendered controls expose keyboard complete navigation and motion choices",
   const html = await response.text();
 
   assert.match(html, /id="mobile-navigation"[^>]*role="dialog"[^>]*aria-modal="true"/);
-  assert.match(html, /aria-label="Pause manuscript to book animation"/);
+  assert.match(html, /aria-label="Pause book animation"/);
   assert.match(html, /aria-label="Pause cover gallery"/);
   assert.match(html, /aria-label="Open A Quiet Street sample cover"/);
 });
 
-test("homepage hero animates a publishing cabinet from manuscript to published book", async () => {
+test("homepage hero is a 3D book stage with a still fallback", async () => {
   const response = await render("/");
   assert.equal(response.status, 200);
   const html = await response.text();
@@ -355,334 +355,94 @@ test("homepage hero animates a publishing cabinet from manuscript to published b
     html,
     /id="hero-publishing-portal"[^>]*role="region"[^>]*data-cover-count="10"/,
   );
+  assert.match(html, /data-visual="book-studio"/);
   assert.match(html, /id="hero-publishing-motion"/);
   assert.match(html, /aria-controls="hero-publishing-motion"/);
-  assert.match(html, /data-visual="publishing-cabinet"/);
-  assert.match(html, /class="publishing-cabinet-scene"/);
-  assert.match(html, /src="\/hero-publishing\/cabinet-shell\.webp"/);
-  assert.match(html, /src="\/hero-publishing\/manuscript-stack\.webp"/);
-  assert.doesNotMatch(html, /finished-book-body/);
-  assert.equal((html.match(/class="book3d" style="--book-spine:#1c2542"/g) ?? []).length, 2, "both renderings use the 3D book with the cover's spine colour");
-  for (const face of ["book3d-back", "book3d-spine", "book3d-pages", "book3d-top", "book3d-bottom", "book3d-sheen"]) {
-    assert.equal((html.match(new RegExp(`class="${face}"`, "g")) ?? []).length, 5, `${face} is rendered for both hero book copies and the three showcase books`);
-  }
-  assert.match(html, /class="cabinet-status cabinet-status-processing"[^>]*>In Process</);
-  assert.match(html, /class="cabinet-status cabinet-status-published"[^>]*>Published</);
-  assert.match(html, /data-active-genre="Fiction"/);
-  assert.match(html, /class="published-book-cover" src="\/sample-covers\/fiction-01\.webp"/);
-  assert.match(html, /alt="A Quiet Street sample cover"/);
-  assert.match(html, />Finished Book</);
+  assert.match(html, /<canvas class="hero-stage-canvas"[^>]*aria-hidden="true"/);
+  // The server-rendered still book is what visitors see before WebGL starts,
+  // with reduced motion, or when WebGL is unavailable.
+  assert.match(html, /class="hero-poster"[^>]*aria-hidden="true"/);
+  assert.match(html, /class="published-book-cover"[^>]*src="\/sample-covers\/[a-z-]+-\d{2}\.webp"/);
+  assert.match(html, /class="hero-stage-caption"[^>]*>.*Sample cover/s);
   assert.match(
     html,
-    /A manuscript slides into the cabinet, the processing light turns yellow, and a finished book slides out and turns to show its cover as the light turns green\. The sequence repeats across ten sample covers\./,
+    /A hardcover sample book turns slowly in the light\. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next sample book\. The sequence repeats across ten sample covers\./,
   );
-  assert.doesNotMatch(html, /publishing-binder|binder-board|binder-cloth-spine/);
-  assert.doesNotMatch(html, /\/(?:hero-books|books-expanded)\//);
+  assert.doesNotMatch(html, /hero-publishing\/|publishing-cabinet|cabinet-/);
 });
 
-test("publishing cabinet uses photographed lamp states and masked motion tracks", async () => {
-  const response = await render("/");
-  assert.equal(response.status, 200);
-  const html = await response.text();
-  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+test("the 3D hero scene is loaded on demand and respects reduced motion", async () => {
+  const [site, scene, css] = await Promise.all([
+    readFile(new URL("../app/PublishingSite.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/hero-scene.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
 
-  assert.match(
-    html,
-    /class="cabinet-lamp-state cabinet-lamp-processing"[^>]*src="\/hero-publishing\/lamp-processing\.webp"/,
-  );
-  assert.match(
-    html,
-    /class="cabinet-lamp-state cabinet-lamp-published"[^>]*src="\/hero-publishing\/lamp-published\.webp"/,
-  );
-  assert.match(html, /class="cabinet-manuscript-track"/);
-  assert.match(html, /data-hero-mask="input-aperture"/);
-  assert.equal(
-    (html.match(/data-input-region="inside-slot"/g) ?? []).length,
-    1,
-    "the manuscript needs one rendering clipped to the input aperture",
-  );
-  assert.equal(
-    (html.match(/data-input-region="exterior"/g) ?? []).length,
-    1,
-    "the manuscript needs one rendering clipped to the tray outside the cabinet",
-  );
-  assert.equal(
-    (html.match(/data-output-region="inside-slot"/g) ?? []).length,
-    1,
-    "the finished book needs one aperture-clipped rendering",
-  );
-  assert.equal(
-    (html.match(/data-output-region="exterior"/g) ?? []).length,
-    1,
-    "the finished book needs one exterior rendering below the aperture",
-  );
-  assert.match(html, /class="published-output-track"/);
-  assert.doesNotMatch(html, /<span class="cabinet-lamp-(?:processing|published)"/);
-
-  const trackRule = css.match(/\.cabinet-manuscript-track\s*\{([^}]*)\}/)?.[1] ?? "";
-  const manuscriptRule = css.match(/\.cabinet-manuscript\s*\{([^}]*)\}/)?.[1] ?? "";
-  const trackWidth = Number(trackRule.match(/width:\s*([\d.]+)%/)?.[1]);
-  const trackHeight = Number(trackRule.match(/height:\s*([\d.]+)%/)?.[1]);
-  const manuscriptWidth = Number(manuscriptRule.match(/width:\s*([\d.]+)%/)?.[1]);
-  const trackHeightInSceneWidths = (trackHeight / 100) * (2 / 3);
-  const manuscriptHeightInSceneWidths =
-    (trackWidth / 100) * (manuscriptWidth / 100) * (427 / 640);
-
-  assert.ok(
-    manuscriptHeightInSceneWidths < trackHeightInSceneWidths,
-    "the manuscript canvas must fit vertically inside its input track",
-  );
-
-  const manuscriptMotion = css.match(/@keyframes cabinet-manuscript-cycle\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
-  const manuscriptIngress = manuscriptMotion.match(
-    /35%\s*\{[^}]*translate3d\(\s*([\d.-]+)%[^)]*\)[^}]*scale\(\s*([\d.]+)\s*\)/,
-  );
-  assert.ok(manuscriptIngress, "the manuscript needs a measurable fully-inside keyframe");
-  const ingressTranslateX = Number(manuscriptIngress?.[1]);
-  const ingressScale = Number(manuscriptIngress?.[2]);
-  const manuscriptRightEdge =
-    (trackWidth / 100) * (manuscriptWidth / 100) *
-    (ingressTranslateX / 100 + ingressScale);
-  assert.ok(
-    manuscriptRightEdge <= 0.36,
-    "the manuscript must fit inside the left bay before it disappears instead of hitting a track edge",
-  );
-
-  const inputSlotRule = css.match(/\.cabinet-manuscript-slot\s*\{([^}]*)\}/)?.[1] ?? "";
-  const inputExteriorRule = css.match(/\.cabinet-manuscript-exterior\s*\{([^}]*)\}/)?.[1] ?? "";
-  assert.match(inputSlotRule, /clip-path:/, "the inside manuscript rendering must be clipped to the input aperture");
-  assert.match(inputExteriorRule, /clip-path:/, "the outside manuscript rendering must be clipped to the tray");
-
-  const outputSlotRule = css.match(/\.published-output-slot\s*\{([^}]*)\}/)?.[1] ?? "";
-  const outputExteriorRule = css.match(/\.published-output-exterior\s*\{([^}]*)\}/)?.[1] ?? "";
-  assert.match(outputSlotRule, /clip-path:/, "the inside book rendering must be clipped to the output aperture");
-  assert.match(outputExteriorRule, /clip-path:/, "the exterior book rendering must be clipped below the output aperture");
-
-  const outputSlotCoordinates = [...outputSlotRule.matchAll(/([\d.]+)%/g)]
-    .map((match) => Number(match[1]));
-  const outputExteriorCoordinates = [...outputExteriorRule.matchAll(/([\d.]+)%/g)]
-    .map((match) => Number(match[1]));
-  assert.deepEqual(
-    outputSlotCoordinates,
-    [20.5, 77.6, 77.6, 18.1, 20.5, 18.1],
-    "the inside output mask must stay aligned to the cabinet aperture",
-  );
-  assert.deepEqual(
-    outputExteriorCoordinates,
-    [18.1],
-    "the exterior output mask must begin at the lower lip of the output opening",
-  );
-
-  const outputRegionRule = css.match(/\.published-output-region\s*\{([^}]*)\}/)?.[1] ?? "";
-  assert.match(
-    outputRegionRule,
-    /top:\s*48%;\s*right:\s*-5%;\s*bottom:\s*-70%;\s*left:\s*56%/,
-    "both output renderings must retain the same cabinet-relative region",
-  );
-
-  const outputRule = css.match(/\.published-output\s*\{([^}]*)\}/)?.[1] ?? "";
-  const outputTrackRule = css.match(/\.published-output-track\s*\{([^}]*)\}/)?.[1] ?? "";
-  const publishedBookRule = css.match(/\.published-book\s*\{([^}]*)\}/)?.[1] ?? "";
-  const bookMotion = css.match(/@keyframes cabinet-book-(?:emerges|motion)\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
-  const bookHorizontalTranslations = [...bookMotion.matchAll(/translate3d\(\s*([\d.-]+)%/g)]
-    .map((match) => Number(match[1]));
-  const bookMotionFrames = new Map();
-  for (const frameMatch of bookMotion.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
-    const transform = frameMatch[2].match(
-      /translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%,\s*0\)\s*scale\(\s*([\d.]+)\s*\)/,
-    );
-    if (!transform) continue;
-    for (const selector of frameMatch[1].split(",")) {
-      bookMotionFrames.set(selector.trim(), {
-        x: Number(transform[1]),
-        y: Number(transform[2]),
-        scale: Number(transform[3]),
-      });
-    }
-  }
-  const outputBottom = Number(outputRule.match(/bottom:\s*([\d.]+)%/)?.[1] ?? 0);
-  const positiveBookTranslations = [...bookMotion.matchAll(/translate3d\([^,]+,\s*([\d.]+)%/g)]
-    .map((match) => Number(match[1]));
-  const lowestBookTranslation = Math.max(0, ...positiveBookTranslations);
-
-  assert.ok(bookHorizontalTranslations.length > 0, "the finished book needs a measurable exit path");
-  assert.ok(
-    bookHorizontalTranslations.every((translation) => translation === 0),
-    "the finished book must travel straight through the output opening without a sideways seam jump",
-  );
-  const smallOrigin = bookMotionFrames.get("64%");
-  const waitingFrame = bookMotionFrames.get("70%");
-  const comingForward = bookMotionFrames.get("80%");
-  const arrival = bookMotionFrames.get("93%");
-  const settledBook = bookMotionFrames.get("100%");
-  assert.deepEqual(
-    smallOrigin,
-    { x: 0, y: -78.6, scale: 0.34 },
-    "the finished book must begin small enough to sit wholly inside the output opening",
-  );
-  assert.ok(
-    waitingFrame && comingForward && arrival && settledBook,
-    "the exit needs waiting, coming-forward, arrival, and settled frames",
-  );
-  assert.deepEqual(waitingFrame, smallOrigin, "the book waits inside the opening while it brightens");
-  const exitFrames = [waitingFrame, comingForward, arrival];
-  assert.ok(
-    exitFrames.every((frame, index) =>
-      index === 0 || (frame.scale > exitFrames[index - 1].scale && frame.y > exitFrames[index - 1].y)),
-    "every exit frame must move toward the viewer and grow without stalling or reversing",
-  );
-  assert.deepEqual(
-    settledBook,
-    { x: 0, y: -9, scale: 1 },
-    "the finished book must reach the intended full size in front of the cabinet",
-  );
-  assert.deepEqual(arrival, settledBook, "the book arrives at its settled geometry before the small bounce");
-  assert.match(bookMotion, /0%,64%\s*\{[^}]*filter:\s*brightness\(\.32\)/, "the book starts dim inside the cabinet");
-  assert.match(bookMotion, /100%\s*\{[^}]*filter:\s*brightness\(1\)/, "the book ends at full brightness");
-  assert.match(
-    outputRule,
-    /position:\s*absolute;\s*inset:\s*0;\s*bottom:\s*10%;\s*display:\s*flex;\s*align-items:\s*flex-end;\s*justify-content:\s*center/,
-    "the output layout must keep the book centered on the fixed aperture baseline",
-  );
-  assert.equal(outputBottom, 10, "the extended output region must retain its verified ten percent baseline inset");
-  assert.match(
-    publishedBookRule,
-    /position:\s*relative;\s*width:\s*min\(260px,\s*100%\);\s*aspect-ratio:\s*1(?:\s*\/\s*1)?;\s*margin:\s*0/,
-    "the book stage must retain the base dimensions used by the output-aperture geometry",
-  );
-  assert.match(publishedBookRule, /perspective:\s*900px/, "the book stage provides the 3D perspective");
-  assert.doesNotMatch(
-    publishedBookRule,
-    /(?:^|;)\s*(?:top|right|bottom|left):/,
-    "the centered book stage must not gain an independent positional offset",
-  );
-  const reducedMotionRule = css.match(
-    /\.hero-books\.is-reduced-motion \.published-output-track\s*\{([^}]*)\}/,
-  )?.[1] ?? "";
-  const reducedMotionTransform = reducedMotionRule.match(
-    /translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%/,
-  );
-  const reducedMotionX = Number(reducedMotionTransform?.[1]);
-  const reducedMotionY = Number(reducedMotionTransform?.[2]);
-  assert.ok(
-    Number.isFinite(reducedMotionX) && Math.abs(reducedMotionX) <= 1,
-    "reduced motion must use the same centered finished book position",
-  );
-  assert.equal(
-    reducedMotionY,
-    settledBook.y,
-    "reduced motion must use the same vertically settled finished book position",
-  );
-  const mediaReducedMotionRule = css.match(
-    /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.hero-books \.published-output-track\s*\{([^}]*)\}/,
-  )?.[1] ?? "";
-  const mediaReducedMotionTransform = mediaReducedMotionRule.match(
-    /translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%/,
-  );
-  const mediaReducedMotionX = Number(mediaReducedMotionTransform?.[1]);
-  const mediaReducedMotionY = Number(mediaReducedMotionTransform?.[2]);
-  assert.ok(
-    Number.isFinite(mediaReducedMotionX) && Math.abs(mediaReducedMotionX) <= 1,
-    "the operating-system reduced-motion fallback must keep the finished book centered",
-  );
-  assert.equal(
-    mediaReducedMotionY,
-    settledBook.y,
-    "the operating-system reduced-motion fallback must use the settled vertical position",
-  );
-  assert.ok(
-    outputBottom >= lowestBookTranslation,
-    "the finished book baseline must offset its lowest visible translation so the cover is not clipped",
-  );
-  assert.match(
-    outputTrackRule,
-    /cabinet-book-visibility[^;]*steps\(1,\s*end\)/,
-    "finished book visibility must switch cleanly instead of fading over the cabinet",
-  );
-
-  const heroBooksRule = css.match(/\.hero-books\s*\{([^}]*)\}/)?.[1] ?? "";
-  const cycleDuration = Number(heroBooksRule.match(/--hero-cycle-duration:\s*([\d.]+)s/)?.[1]);
-  assert.ok(cycleDuration > 0 && cycleDuration <= 7, "the full publishing cycle must finish within seven seconds");
+  assert.match(site, /await import\("\.\/hero-scene"\)/, "three.js must stay out of the first paint");
+  assert.doesNotMatch(site, /from "three"/);
+  assert.match(site, /if \(!canvas \|\| reducedMotion\) return;/, "reduced motion keeps the still book");
+  assert.match(scene, /shadowMap\.enabled = true/);
+  assert.match(scene, /webglcontextlost/);
+  assert.match(scene, /dispose\(\)/);
+  assert.match(css, /\.hero-books\.is-live \.hero-stage-canvas \{ opacity: 1; \}/);
+  assert.match(css, /\.hero-books\.is-live \.hero-poster \{[^}]*visibility: hidden/);
+  assert.doesNotMatch(css, /cabinet/);
 });
 
-test("finished book starts inside the output opening and comes forward over its lip", async () => {
-  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  const rule = (selector) => css.match(new RegExp(`${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
-  const heroInnerRule = rule("\\.hero-inner");
-  const heroBooksRule = css.match(/\.hero-books\s*\{\s*--hero-cycle-duration[^}]*\}/)?.[0] ?? "";
-  const sceneRule = rule("\\.publishing-cabinet-scene");
-  const outputRegionRule = rule("\\.published-output-region");
-  const outputSlotRule = rule("\\.published-output-slot");
-  const outputExteriorRule = rule("\\.published-output-exterior");
-  const outputRule = rule("\\.published-output");
-  const publishedBookRule = rule("\\.published-book");
-  const book3dRule = rule("\\.book3d");
-  const bookMotion = css.match(/@keyframes cabinet-book-motion\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+test("the supplied logo is used with a fixed gold PRO", async () => {
+  const html = await (await render("/")).text();
+  const logos = html.match(/<svg class="brand-logo"[^>]*aria-label="AMZ Publishing Pro"/g) ?? [];
+  assert.equal(logos.length, 2, "header and footer both carry the logo");
+  assert.match(html, /class="brand-logo-pro" fill="#E9C664"/);
+  assert.equal((html.match(/fill="currentColor"/g) ?? []).length >= 4, true);
+  assert.match(html, /rel="icon"[^>]*href="\/favicon\.svg"/);
 
-  const sceneWidth = Number(sceneRule.match(/width:\s*min\(\s*([\d.]+)px/)?.[1]);
-  const sceneTop = Number(sceneRule.match(/top:\s*([\d.]+)px/)?.[1]);
-  const sceneAspect = sceneRule.match(/aspect-ratio:\s*([\d.]+)\s*\/\s*([\d.]+)/);
-  const heroBooksHeight = Number(heroBooksRule.match(/min-height:\s*([\d.]+)px/)?.[1]);
-  const heroBottomPadding = Number(heroInnerRule.match(/padding:\s*([\d.]+)px\s+0\s+([\d.]+)px/)?.[2]);
-  const outputTop = Number(outputRegionRule.match(/top:\s*([\d.-]+)%/)?.[1]);
-  const outputBottomEdge = Number(outputRegionRule.match(/bottom:\s*([\d.-]+)%/)?.[1]);
-  const baselineInset = Number(outputRule.match(/bottom:\s*([\d.]+)%/)?.[1]) / 100;
-  const figureSize = Number(publishedBookRule.match(/width:\s*min\(\s*([\d.]+)px/)?.[1]);
-  const bookTopInFigure = Number(book3dRule.match(/top:\s*([\d.]+)%/)?.[1]) / 100;
-  const bookHeightInFigure = Number(book3dRule.match(/height:\s*([\d.]+)%/)?.[1]) / 100;
-  const openingLip = [...outputSlotRule.matchAll(/([\d.]+)%/g)].map((match) => Number(match[1]))[3] / 100;
-  const exteriorStart = Number(outputExteriorRule.match(/clip-path:\s*inset\(\s*([\d.]+)%/)?.[1]) / 100;
-
-  assert.ok(
-    [sceneWidth, sceneTop, heroBooksHeight, heroBottomPadding, outputTop, outputBottomEdge, baselineInset, figureSize, bookTopInFigure, bookHeightInFigure, openingLip, exteriorStart]
-      .every(Number.isFinite) && sceneAspect,
-    "the exit geometry needs measurable scene, mask, baseline, and book dimensions",
-  );
-  assert.equal(exteriorStart, openingLip, "the exterior rendering starts exactly at the opening's lower lip, so the book is never hidden behind the cabinet front");
-
-  const sceneHeight = sceneWidth * (Number(sceneAspect[2]) / Number(sceneAspect[1]));
-  const regionHeight = sceneHeight * (1 - outputTop / 100 - outputBottomEdge / 100);
-  const figureInRegion = figureSize / regionHeight;
-  // Unscaled positions of the book inside the output region, as fractions of its height.
-  const restBottom = 1 - baselineInset - figureInRegion * (1 - bookTopInFigure - bookHeightInFigure);
-  const restTop = restBottom - figureInRegion * bookHeightInFigure;
-  // The track scales about its bottom edge and then moves by a share of its own height.
-  const place = (edge, frame) => 1 - (1 - edge) * frame.scale + frame.y;
-
-  const frames = [];
-  for (const frameMatch of bookMotion.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
-    const transform = frameMatch[2].match(/translate3d\(\s*([\d.-]+)%,\s*([\d.-]+)%,\s*0\)\s*scale\(\s*([\d.]+)\s*\)/);
-    if (!transform) continue;
-    for (const selector of frameMatch[1].split(",")) {
-      frames.push({ percent: Number(selector.trim().replace("%", "")), x: Number(transform[1]), y: Number(transform[2]) / 100, scale: Number(transform[3]) });
-    }
+  for (const file of ["logo-for-dark-background.svg", "logo-for-light-background.svg", "logo-for-dark-background.png", "logo-for-light-background.png"]) {
+    const bytes = await readFile(new URL(`../public/brand/${file}`, import.meta.url));
+    assert.ok(bytes.byteLength > 1000, `${file} is present`);
   }
-  frames.sort((a, b) => a.percent - b.percent);
-  assert.ok(frames.length >= 5, "the exit needs measurable keyframes");
-  assert.ok(frames.every((frame) => frame.x === 0), "the book stays centred on the output bay");
+});
 
-  const startFrame = frames.find((frame) => frame.percent === 64);
-  assert.ok(startFrame, "the book appears at 64% of the cycle");
-  assert.ok(place(restTop, startFrame) >= 0, "the book starts below the top of the opening");
-  assert.ok(place(restBottom, startFrame) <= openingLip, "the whole book starts inside the opening");
+test("no section labels its items with running numbers", async () => {
+  const html = await (await render("/")).text();
+  assert.doesNotMatch(html, />0[1-9]</);
+  const site = await readFile(new URL("../app/PublishingSite.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(site, /padStart\(2/);
+});
 
-  const scales = frames.filter((frame) => frame.percent >= 64 && frame.percent <= 93).map((frame) => frame.scale);
-  assert.ok(scales.every((scale, index) => index === 0 || scale >= scales[index - 1]), "the book only grows as it comes toward the viewer");
+test("client covers are shown as front covers and kept apart from the samples", async () => {
+  const { clientCovers } = await import("../app/client-covers.ts");
+  const html = await (await render("/")).text();
+  const section = html.match(/<section class="section client-covers-section"[\s\S]*?<\/section>/)?.[0] ?? "";
 
-  const settledFrame = frames.find((frame) => frame.percent === 100);
-  assert.equal(settledFrame.scale, 1);
-  assert.ok(place(restTop, settledFrame) >= openingLip, "the settled book sits fully in front of the cabinet, below the opening");
-  assert.ok(place(restBottom, settledFrame) <= 1, "the settled book is not clipped at the bottom of the output region");
+  assert.ok(section, "the client covers section renders");
+  assert.match(section, /Client projects/);
+  assert.doesNotMatch(section, /Sample concept|sample-covers\//, "client work is never mixed with sample concepts");
+  assert.equal((section.match(/<figure class="client-cover"/g) ?? []).length, clientCovers.length);
 
-  const settledBookBottom = sceneTop + sceneHeight * (outputTop / 100) + regionHeight * place(restBottom, settledFrame);
-  assert.ok(
-    heroBooksHeight + heroBottomPadding - settledBookBottom >= 20,
-    "the finished book and its shadow must clear the hero boundary before the service ribbon",
-  );
+  for (const cover of clientCovers) {
+    const bytes = await readFile(new URL(`../public${cover.src}`, import.meta.url));
+    assert.equal(bytes.subarray(0, 4).toString("latin1"), "RIFF", `${cover.slug} is a WebP file`);
+    assert.ok(bytes.byteLength < 400_000, `${cover.slug} stays reasonably small`);
+    assert.ok(section.includes(`src="${cover.src}"`));
+    assert.ok(cover.title && cover.author);
+  }
+});
 
-  const turn = css.match(/@keyframes book3d-turn\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
-  assert.match(turn, /100%\s*\{\s*transform:\s*rotateY\(-24deg\)/, "the book settles turned toward the viewer");
-  assert.match(css, /\.hero-books\.is-reduced-motion \.book3d\s*\{\s*animation:\s*none/, "reduced motion shows a still book");
+test("client reviews are only shown with a public source", async () => {
+  const { clientReviews } = await import("../app/client-reviews.ts");
+  const html = await (await render("/")).text();
+
+  if (clientReviews.length === 0) {
+    assert.doesNotMatch(html, /id="reviews"/, "an empty review list renders no section");
+    return;
+  }
+  assert.match(html, /id="reviews"/);
+  for (const review of clientReviews) {
+    assert.match(review.sourceUrl, /^https:\/\//, "every review links to where it was posted");
+    assert.ok(review.name.trim() && review.text.trim() && review.date.trim());
+    assert.doesNotMatch(review.text, /\bFBA\b/, "reviews must be about this publishing service");
+  }
 });
 
 test("navigation and cover service copy stay consistent", async () => {
