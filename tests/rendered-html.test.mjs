@@ -353,7 +353,7 @@ test("homepage hero is a 3D book stage with a still fallback", async () => {
 
   assert.match(
     html,
-    /id="hero-publishing-portal"[^>]*role="region"[^>]*data-cover-count="10"/,
+    /id="hero-publishing-portal"[^>]*role="region"[^>]*data-cover-count="4"[^>]*data-cover-kind="client"/,
   );
   assert.match(html, /data-visual="book-studio"/);
   assert.match(html, /id="hero-publishing-motion"/);
@@ -362,11 +362,12 @@ test("homepage hero is a 3D book stage with a still fallback", async () => {
   // The server-rendered still book is what visitors see before WebGL starts,
   // with reduced motion, or when WebGL is unavailable.
   assert.match(html, /class="hero-poster"[^>]*aria-hidden="true"/);
-  assert.match(html, /class="published-book-cover"[^>]*src="\/sample-covers\/[a-z-]+-\d{2}\.webp"/);
-  assert.match(html, /class="hero-stage-caption"[^>]*>.*Sample cover/s);
+  // The hero shows covers designed for clients, labelled as such.
+  assert.match(html, /class="published-book-cover"[^>]*src="\/client-covers\/[a-z-]+\.webp"/);
+  assert.match(html, /class="hero-stage-caption"[^>]*><span>Client project<\/span>/);
   assert.match(
     html,
-    /A hardcover sample book turns slowly in the light\. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next sample book\. The sequence repeats across ten sample covers\./,
+    /A hardcover book turns slowly in the light\. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next book\. The sequence repeats across <!-- -->four<!-- --> <!-- -->covers designed for our authors<!-- -->\./,
   );
   assert.doesNotMatch(html, /hero-publishing\/|publishing-cabinet|cabinet-/);
 });
@@ -391,9 +392,12 @@ test("the 3D hero scene is loaded on demand and respects reduced motion", async 
 
 test("the supplied logo is used with a fixed gold PRO", async () => {
   const html = await (await render("/")).text();
-  const logos = html.match(/<svg class="brand-logo"[^>]*aria-label="AMZ Publishing Pro"/g) ?? [];
+  const logos = html.match(/<svg class="brand-logo[^"]*"[^>]*aria-label="AMZ Publishing Pro"/g) ?? [];
   assert.equal(logos.length, 2, "header and footer both carry the logo");
+  assert.match(html, /<header[^>]*>\s*<a class="wordmark"[^>]*><svg class="brand-logo brand-logo--wide"/, "the header uses the wide lockup");
   assert.match(html, /class="brand-logo-pro" fill="#E9C664"/);
+  assert.doesNotMatch(html, /class="brand-logo-pro[^"]*"[^>]*fill="(?!#E9C664)/, "every PRO element is the brand gold");
+  assert.ok(html.indexOf("</header>") < html.indexOf('<aside class="season-ribbon"'), "the seasonal greeting sits under the header");
   assert.equal((html.match(/fill="currentColor"/g) ?? []).length >= 4, true);
   assert.match(html, /rel="icon"[^>]*href="\/favicon\.svg"/);
 

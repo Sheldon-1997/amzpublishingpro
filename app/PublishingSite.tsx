@@ -7,6 +7,7 @@ import { buildOrganizationStructuredData, businessFacts } from "./business-data"
 import { clientCovers } from "./client-covers";
 import { clientReviews } from "./client-reviews";
 import { heroPublishingCovers } from "./hero-publishing-covers";
+import { SeasonRibbon } from "./SeasonLayer";
 import { genreFromUrl, portfolioHrefForGenre } from "./portfolio-navigation";
 import { books, genres, services, type BookItem } from "./site-data";
 
@@ -108,9 +109,10 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
   }, [closeMenu, open]);
 
   return (
+    <>
     <header className={`site-header${solid ? " site-header--solid" : ""}`}>
       <a className="wordmark" href="/" aria-label={`${businessFacts.name} home`}>
-        <BrandLogo className="brand-logo" />
+        <BrandLogo className="brand-logo brand-logo--wide" variant="wide" />
       </a>
 
       <nav className="primary-nav" aria-label="Primary navigation">
@@ -200,6 +202,8 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
 
       {inquiryOpen ? <ProjectInquiryDialog open onClose={closeInquiry} /> : null}
     </header>
+    <SeasonRibbon />
+    </>
   );
 }
 
@@ -644,7 +648,14 @@ export function SiteFooter() {
   );
 }
 
-type HeroCover = (typeof heroPublishingCovers)[number];
+type HeroCover = { src: string; spine: string; width: number; height: number; label: string; kind: "client" | "sample" };
+
+// The hero shows real client covers. The sample covers are only a fallback for
+// a site with no client covers on file.
+const heroCovers: readonly HeroCover[] = clientCovers.length > 0
+  ? clientCovers.map((cover) => ({ src: cover.src, spine: cover.spine, width: cover.width, height: cover.height, label: cover.title, kind: "client" }))
+  : heroPublishingCovers.map((cover) => ({ src: cover.src, spine: cover.spine, width: cover.width, height: cover.height, label: cover.genre, kind: "sample" }));
+const heroCoverWord = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][heroCovers.length] ?? String(heroCovers.length);
 type HeroSceneHandle = import("./hero-scene").HeroSceneHandle;
 
 // A book built from CSS faces. The KDP section uses it for its sample books and
@@ -679,7 +690,7 @@ function HeroBook3D({ cover }: { cover: HeroCover }) {
 // The hero visual. The server renders a still book; in the browser a WebGL
 // scene (app/hero-scene.ts) takes over when motion is allowed and WebGL works.
 function HeroBookStage() {
-  const [coverIndex, setCoverIndex] = useState(1);
+  const [coverIndex, setCoverIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [live, setLive] = useState(false);
   const [stageVisible, setStageVisible] = useState(true);
@@ -719,7 +730,7 @@ function HeroBookStage() {
         if (cancelled) return;
         sceneRef.current = createHeroScene({
           canvas,
-          covers: heroPublishingCovers,
+          covers: heroCovers,
           startIndex: startIndexRef.current,
           onCoverChange: (index) => {
             startIndexRef.current = index;
@@ -773,22 +784,23 @@ function HeroBookStage() {
     };
   }, [live]);
 
-  const activeCover = heroPublishingCovers[coverIndex];
+  const activeCover = heroCovers[coverIndex];
 
   return (
     <div
       id="hero-publishing-portal"
       role="region"
-      data-cover-count={heroPublishingCovers.length}
-      data-active-genre={activeCover.genre}
+      data-cover-count={heroCovers.length}
+      data-cover-kind={activeCover.kind}
+      data-active-genre={activeCover.label}
       data-visual="book-studio"
-      aria-label="Sample book illustration"
+      aria-label="Book cover showcase"
       aria-describedby="hero-publishing-description"
       className={`hero-books${live ? " is-live" : ""}${paused ? " is-paused" : ""}${reducedMotion ? " is-reduced-motion" : ""}`}
       ref={stageRef}
     >
       <p className="visually-hidden" id="hero-publishing-description">
-        A hardcover sample book turns slowly in the light. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next sample book. The sequence repeats across ten sample covers.
+        A hardcover book turns slowly in the light. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next book. The sequence repeats across {heroCoverWord} {activeCover.kind === "client" ? "covers designed for our authors" : "sample covers"}.
       </p>
       <div className="hero-art-backdrop" aria-hidden="true" />
       <div id="hero-publishing-motion" className="hero-stage">
@@ -798,7 +810,7 @@ function HeroBookStage() {
         <canvas className="hero-stage-canvas" ref={canvasRef} aria-hidden="true" />
       </div>
       <p className="hero-stage-caption" aria-hidden="true">
-        <span>{activeCover.genre}</span> Sample cover
+        <span>{activeCover.kind === "client" ? "Client project" : "Sample cover"}</span> {activeCover.label}
       </p>
       {!reducedMotion && (
         <button

@@ -84,8 +84,8 @@ before the first paint, so the theme changes on its own with no rebuild.
 
 A season never replaces the brand colours: the header, dark sections, links
 and buttons stay in the logo's navy, blue and gold all year (a test enforces
-this). Festive seasons show a blue greeting ribbon with their own accent
-colour, add two soft tints behind the hero, and run a light canvas effect
+this). Festive seasons show a light greeting band under the header with their
+own accent colour, add two soft tints behind the hero, and run a light canvas effect
 (snow, leaves, confetti, hearts, or sparks). Days of remembrance show a single
 line only. The visitor can close the ribbon, which also stops the effect for
 that browser session. Effects never run for visitors who prefer reduced motion.
@@ -102,7 +102,9 @@ sale, discount, or deal.
 The hero is a WebGL scene (`app/hero-scene.ts`, three.js): a hardcover book
 with real lighting, reflections and a cast shadow. It turns slowly, then lies
 back and opens, its pages lift into a spiral and settle again, and it closes
-as the next sample book. The camera leans toward the pointer on desktop.
+as the next book. The camera leans toward the pointer on desktop. It cycles
+through the client covers in `app/client-covers.ts` (the sample covers are a
+fallback only if that list is empty).
 
 - The server renders a still CSS book (`.hero-poster`). The scene replaces it
   only after the page has loaded, so three.js never delays the first paint.
@@ -113,7 +115,9 @@ as the next sample book. The camera leans toward the pointer on desktop.
 
 ## Logo
 
-The logo comes from the owner's logo pack. `BrandLogo` draws it inline: the
+The logo comes from the owner's logo pack. The header uses a wide lockup built
+from the same letter shapes (large AMZ, a gold rule, PUBLISHING over PRO); the
+footer uses the pack's stacked version. `BrandLogo` draws both inline: the
 "AMZ PUBLISHING" letters use the current text colour so they follow the theme,
 and "PRO" is always the brand gold (`#E9C664` on dark backgrounds). Do not
 recolour "PRO". The pack's favicon and 1200x630 share image are in `public/`.

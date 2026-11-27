@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { businessFacts } from "./business-data";
-import { SeasonEffects, SeasonRibbon } from "./SeasonLayer";
+import { SeasonEffects } from "./SeasonLayer";
 import { seasonBootstrapScript } from "./seasons";
 import "./globals.css";
 
@@ -45,7 +45,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body>
         <div className="scroll-progress" aria-hidden="true" />
-        <SeasonRibbon />
         {children}
         <SeasonEffects />
       </body>

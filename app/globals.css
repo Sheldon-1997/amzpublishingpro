@@ -53,16 +53,20 @@ h2 { margin: 0; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; }
 .site-header {
   position: relative; z-index: 30; display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 28px;
-  width: 100%; min-height: 72px; padding: 12px max(24px, calc((100% - var(--max)) / 2));
+  width: 100%; min-height: 88px; padding: 14px max(24px, calc((100% - var(--max)) / 2));
   background: var(--header); color: var(--paper); box-shadow: 0 1px 0 rgba(255,255,255,.08);
 }
 .site-header--solid { position: relative; }
 .wordmark { position: relative; display: inline-flex; align-items: center; color: var(--paper); line-height: 0; }
 /* Logo from the brand pack: letters follow the text colour, "PRO" stays gold. */
 .brand-logo { display: block; width: auto; height: 46px; }
+.brand-logo--wide { height: 46px; transition: transform .35s cubic-bezier(.2,.7,.2,1); }
+.brand-logo-rule { transform-box: fill-box; transform-origin: left center; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+.wordmark:hover .brand-logo--wide { transform: translateY(-1px); }
+.wordmark:hover .brand-logo-rule { transform: scaleX(.55); }
 .brand-logo-pro { fill: #E9C664; }
 .footer-brand .brand-logo { height: 68px; }
-.primary-nav { display: flex; justify-content: center; align-items: center; gap: 22px; font-size: 14px; font-weight: 650; }
+.primary-nav { display: flex; justify-content: center; align-items: center; gap: 26px; font-size: 15px; font-weight: 650; }
 .primary-nav > a, .nav-dropdown > summary { color: rgba(255,255,255,.86); cursor: pointer; transition: color 140ms ease; }
 .primary-nav > a:hover, .primary-nav > a:focus-visible, .nav-dropdown > summary:hover, .nav-dropdown > summary:focus-visible { color: var(--teal-bright); }
 .nav-dropdown { position: relative; }
@@ -175,7 +179,7 @@ h1 { max-width: 720px; margin: 0; font-family: var(--font-sans); font-size: clam
 .hero-stage-caption {
   position: absolute; left: 50%; bottom: 14px; z-index: 6; margin: 0; padding: 7px 14px; border: 1px solid rgba(43,74,160,.18);
   border-radius: 999px; background: rgba(255,255,255,.82); color: var(--muted); font-size: 11px; font-weight: 650;
-  letter-spacing: .04em; white-space: nowrap; transform: translateX(-50%); backdrop-filter: blur(8px);
+  letter-spacing: .02em; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; transform: translateX(-50%); backdrop-filter: blur(8px);
 }
 .hero-stage-caption span { margin-right: 8px; padding-right: 9px; border-right: 1px solid rgba(43,74,160,.22); color: var(--teal-deep); font-weight: 800; }
 @keyframes poster-float {
@@ -432,6 +436,8 @@ h1 { max-width: 720px; margin: 0; font-family: var(--font-sans); font-size: clam
   .site-header { grid-template-columns: 1fr auto; gap: 12px; padding-inline: 16px; }
   .site-header .header-cta { display: none; }
   .brand-logo { height: 40px; }
+  .brand-logo--wide { height: 34px; }
+  .site-header { min-height: 72px; }
   .hero-inner, .section, .page-hero-inner { width: min(100% - 32px,var(--max)); }
   .hero-inner { gap: 34px; min-height: auto; padding: 54px 0 48px; }
   h1 { font-size: clamp(40px,12vw,54px); }
@@ -481,7 +487,7 @@ h1 { max-width: 720px; margin: 0; font-family: var(--font-sans); font-size: clam
 /* ------------------------------------------------------------------ */
 /* Seasonal themes. data-season is set on <html> by the head script.   */
 /* ------------------------------------------------------------------ */
-.season-ribbon { display: none; position: relative; z-index: 31; background: var(--season-ribbon-bg,var(--teal-deep)); color: var(--season-ribbon-ink,#fff); }
+.season-ribbon { display: none; position: relative; z-index: 29; border-bottom: 1px solid rgba(43,74,160,.14); background: var(--season-ribbon-bg,#eef2ff); color: var(--season-ribbon-ink,#14204a); }
 html[data-season] .season-ribbon { display: block; }
 html[data-season-dismissed] .season-ribbon { display: none; }
 .season-ribbon-inner {
@@ -489,13 +495,14 @@ html[data-season-dismissed] .season-ribbon { display: none; }
   width: min(var(--max),calc(100% - 32px)); margin: 0 auto; padding: 7px 44px 7px 0; position: relative;
 }
 .season-message { display: none; margin: 0; font-size: 13px; font-weight: 650; line-height: 1.4; letter-spacing: .01em; text-align: center; }
-.season-message a { margin-left: 12px; color: var(--season-ribbon-accent,var(--cta-start)); font-weight: 800; text-underline-offset: 3px; white-space: nowrap; }
-.season-message a:hover, .season-message a:focus-visible { color: #fff; }
+.season-message a { margin-left: 12px; color: var(--teal); font-weight: 800; text-decoration: underline; text-decoration-color: var(--season-ribbon-accent,var(--cta-start)); text-decoration-thickness: 2px; text-underline-offset: 4px; white-space: nowrap; }
+.season-message a:hover, .season-message a:focus-visible { color: var(--teal-deep); }
+.season-message-text::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 10px; background: var(--season-ribbon-accent,var(--cta-start)); transform: translateY(-1px) rotate(45deg); }
 .season-dismiss {
   position: absolute; top: 50%; right: 0; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
-  border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: inherit; cursor: pointer; font-size: 18px; line-height: 1; transform: translateY(-50%);
+  border: 0; border-radius: 50%; background: rgba(20,32,74,.08); color: inherit; cursor: pointer; font-size: 18px; line-height: 1; transform: translateY(-50%);
 }
-.season-dismiss:hover, .season-dismiss:focus-visible { background: rgba(255,255,255,.26); }
+.season-dismiss:hover, .season-dismiss:focus-visible { background: rgba(20,32,74,.18); }
 .season-effects { position: fixed; inset: 0; z-index: 25; display: none; width: 100%; height: 100%; pointer-events: none; }
 html[data-season] .season-effects { display: block; }
 html[data-season-dismissed] .season-effects { display: none; }
@@ -519,17 +526,17 @@ html[data-season="holiday-season"] .season-message[data-season-for="holiday-seas
    and buttons stay in the logo's navy, blue and gold all year. A season only
    picks the ribbon's accent colour and two soft tints behind the hero. */
 html[data-season]:not([data-season-dismissed]) {
-  --season-ribbon-bg: linear-gradient(100deg,#1b2f7a 0%,#2b4aa0 38%,#3f6be0 62%,#2b4aa0 82%,#1b2f7a 100%);
-  --season-ribbon-ink: #ffffff; --season-ribbon-accent: #ecc766;
+  --season-ribbon-bg: linear-gradient(90deg,#e6ecff,#f4f7ff 50%,#e6ecff);
+  --season-ribbon-ink: #14204a; --season-ribbon-accent: #d4a43a;
 }
-html[data-season="black-friday"]:not([data-season-dismissed]) { --season-ribbon-accent: #ecc766; --season-tint-a: rgba(236,199,102,.26); --season-tint-b: rgba(93,141,239,.2); --season-ring: rgba(43,74,160,.1); }
-html[data-season="cyber-monday"]:not([data-season-dismissed]) { --season-ribbon-accent: #9dc2ff; --season-tint-a: rgba(93,141,239,.26); --season-tint-b: rgba(157,185,255,.22); --season-ring: rgba(45,85,214,.12); }
-html[data-season="holiday-season"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffd9a0; --season-tint-a: rgba(196,58,66,.12); --season-tint-b: rgba(157,185,255,.2); --season-ring: rgba(43,74,160,.1); }
-html[data-season="new-year"]:not([data-season-dismissed]) { --season-ribbon-accent: #ecc766; --season-tint-a: rgba(236,199,102,.26); --season-tint-b: rgba(120,140,235,.2); --season-ring: rgba(43,74,160,.11); }
-html[data-season="thanksgiving"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffd27a; --season-tint-a: rgba(224,161,58,.26); --season-tint-b: rgba(157,185,255,.16); --season-ring: rgba(43,74,160,.09); }
-html[data-season="halloween"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffb25c; --season-tint-a: rgba(226,113,29,.2); --season-tint-b: rgba(123,110,220,.16); --season-ring: rgba(43,74,160,.1); }
-html[data-season="independence-day"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffe08a; --season-tint-a: rgba(178,34,52,.14); --season-tint-b: rgba(60,91,191,.2); --season-ring: rgba(43,74,160,.1); }
-html[data-season="valentines"]:not([data-season-dismissed]) { --season-ribbon-accent: #ffd0dc; --season-tint-a: rgba(226,87,122,.16); --season-tint-b: rgba(157,185,255,.2); --season-ring: rgba(43,74,160,.1); }
+html[data-season="black-friday"]:not([data-season-dismissed]) { --season-ribbon-accent: #d4a43a; --season-tint-a: rgba(236,199,102,.26); --season-tint-b: rgba(93,141,239,.2); --season-ring: rgba(43,74,160,.1); }
+html[data-season="cyber-monday"]:not([data-season-dismissed]) { --season-ribbon-accent: #3f6be0; --season-tint-a: rgba(93,141,239,.26); --season-tint-b: rgba(157,185,255,.22); --season-ring: rgba(45,85,214,.12); }
+html[data-season="holiday-season"]:not([data-season-dismissed]) { --season-ribbon-accent: #c43a42; --season-tint-a: rgba(196,58,66,.12); --season-tint-b: rgba(157,185,255,.2); --season-ring: rgba(43,74,160,.1); }
+html[data-season="new-year"]:not([data-season-dismissed]) { --season-ribbon-accent: #d4a43a; --season-tint-a: rgba(236,199,102,.26); --season-tint-b: rgba(120,140,235,.2); --season-ring: rgba(43,74,160,.11); }
+html[data-season="thanksgiving"]:not([data-season-dismissed]) { --season-ribbon-accent: #d98a1f; --season-tint-a: rgba(224,161,58,.26); --season-tint-b: rgba(157,185,255,.16); --season-ring: rgba(43,74,160,.09); }
+html[data-season="halloween"]:not([data-season-dismissed]) { --season-ribbon-accent: #e2711d; --season-tint-a: rgba(226,113,29,.2); --season-tint-b: rgba(123,110,220,.16); --season-ring: rgba(43,74,160,.1); }
+html[data-season="independence-day"]:not([data-season-dismissed]) { --season-ribbon-accent: #b22234; --season-tint-a: rgba(178,34,52,.14); --season-tint-b: rgba(60,91,191,.2); --season-ring: rgba(43,74,160,.1); }
+html[data-season="valentines"]:not([data-season-dismissed]) { --season-ribbon-accent: #e2577a; --season-tint-a: rgba(226,87,122,.16); --season-tint-b: rgba(157,185,255,.2); --season-ring: rgba(43,74,160,.1); }
 html[data-season]:not([data-season-dismissed]) .hero {
   background: radial-gradient(circle at 78% 22%,var(--season-tint-b,rgba(157,185,255,.13)),transparent 28%),radial-gradient(circle at 8% 88%,var(--season-tint-a,transparent),transparent 30%),linear-gradient(120deg,var(--ivory) 0 58%,var(--warm) 58% 100%);
 }
