@@ -12,7 +12,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 
 | Item | State |
 | --- | --- |
-| Source rebrand | Done, 46 tests pass on a fresh build |
+| Source rebrand | Done, 47 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
 | Live site | Published with GitHub Pages at https://amzpublishingpro.com/ on 27 November 2026 |
 | HTTPS | Certificate issued and "Enforce HTTPS" is on; `http` and `www` redirect to `https://amzpublishingpro.com` |
@@ -31,7 +31,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # local preview
-pnpm test         # production build + 46 tests
+pnpm test         # production build + 47 tests
 pnpm lint
 ```
 
@@ -121,6 +121,18 @@ carries the phone number on every page (an icon button on phones). The hero's
 pause control is not drawn but is still reachable by keyboard. The contact
 section at the foot of the homepage shows the number large beside the inquiry
 form; the form still opens the visitor's email app.
+
+## Performance
+
+- The 3D hero watches its own frame rate. On a slow device it first drops
+  shadows and pixel density, then hands back to the still book, whose cover
+  still changes every few seconds.
+- Seasonal particles run only while the top of the page is on screen.
+- Looping CSS animations pause while their section is off screen
+  (`useOffscreenPause`).
+- No `filter: drop-shadow` or canvas masks: both are repainted every frame.
+- Small placements use the 360 pixel cover copies in
+  `public/client-covers/thumb/`. Regenerate a thumbnail when a cover changes.
 
 ## Logo
 

@@ -453,6 +453,29 @@ test("the header carries the phone number on every page and no dropdown arrow", 
   assert.match(css, /\.hero-rotation-toggle:not\(:focus-visible\)/, "the pause control is only drawn for keyboard focus");
 });
 
+test("the page stays light: no per-frame filters, paused off-screen loops, small cover copies", async () => {
+  const [css, scene, season, site] = await Promise.all([
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/hero-scene.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/SeasonLayer.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PublishingSite.tsx", import.meta.url), "utf8"),
+  ]);
+  const { clientCovers } = await import("../app/client-covers.ts");
+
+  assert.doesNotMatch(css, /filter:\s*drop-shadow/, "drop-shadow filters are repainted on every animation frame");
+  assert.doesNotMatch(css, /\.hero-stage-canvas \{[^}]*mask-image/, "no mask over the WebGL canvas");
+  assert.match(css, /\[data-offscreen\][^{]*\{ animation-play-state: paused !important; \}/);
+  assert.match(site, /useOffscreenPause\(\);/);
+  assert.match(scene, /lowerQuality\(\)/, "the 3D scene steps down on slow devices");
+  assert.match(scene, /texture\.dispose\(\);\s*coverTextures\.delete\(index\)/, "old cover textures are released");
+  assert.match(season, /window\.scrollY < window\.innerHeight \* 0\.9/, "particles only run over the top of the page");
+
+  for (const cover of clientCovers) {
+    const thumb = await readFile(new URL(`../public${cover.thumb}`, import.meta.url));
+    assert.ok(thumb.byteLength < 60_000, `${cover.slug} thumbnail is small`);
+  }
+});
+
 test("the figure bar shows exactly the owner's figures", async () => {
   const { ownerClientStatement, ownerFigures } = await import("../app/business-data.ts");
   const html = await (await render("/")).text();

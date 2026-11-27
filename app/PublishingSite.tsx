@@ -682,6 +682,7 @@ function HeroBook3D({ cover }: { cover: HeroCover }) {
         {/* Native images keep every sample cover at its original proportions. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          key={cover.src}
           className="published-book-cover"
           src={cover.src}
           alt=""
@@ -703,6 +704,7 @@ function HeroBookStage() {
   const [coverIndex, setCoverIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [live, setLive] = useState(false);
+  const [still, setStill] = useState(false);
   const [stageVisible, setStageVisible] = useState(true);
   const [documentVisible, setDocumentVisible] = useState(true);
   const reducedMotion = usePrefersReducedMotion();
@@ -747,7 +749,11 @@ function HeroBookStage() {
             setCoverIndex(index);
           },
           onReady: () => setLive(true),
-          onLost: () => setLive(false),
+          // WebGL was lost or is too slow on this device: show the still book.
+          onLost: () => {
+            setLive(false);
+            setStill(true);
+          },
         });
       } catch {
         // The still book stays in place.
@@ -766,6 +772,13 @@ function HeroBookStage() {
       setLive(false);
     };
   }, [reducedMotion]);
+
+  // On devices that fell back to the still book, the covers still change.
+  useEffect(() => {
+    if (!still || paused || !stageVisible || !documentVisible) return;
+    const timer = window.setInterval(() => setCoverIndex((current) => (current + 1) % heroCovers.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [documentVisible, paused, stageVisible, still]);
 
   const running = live && !paused && stageVisible && documentVisible;
   useEffect(() => {
@@ -851,6 +864,21 @@ const kdpSteps = [
 const kdpShowcase = ["every-choice-has-consequences", "twisted-play-better-golf", "success-by-the-book"]
   .map((slug) => clientCovers.find((cover) => cover.slug === slug))
   .filter((cover): cover is (typeof clientCovers)[number] => Boolean(cover));
+
+// Looping CSS animations (marquees, floating books) stop while their section is
+// off screen, so they never compete with scrolling.
+const offscreenPauseSelector = ".service-ribbon, .kdp-stage, .cover-river, .reviews-section, .figure-bar";
+
+function useOffscreenPause() {
+  useEffect(() => {
+    if (!("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) entry.target.toggleAttribute("data-offscreen", !entry.isIntersecting);
+    }, { rootMargin: "120px 0px" });
+    document.querySelectorAll(offscreenPauseSelector).forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, []);
+}
 
 // Pointer effects shared by the whole page: cards marked data-tilt lean toward
 // the cursor, and sections marked data-spotlight get a soft light under it.
@@ -942,7 +970,7 @@ function KdpSection() {
                 <span className="book3d-top" />
                 <span className="book3d-bottom" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className="kdp-book-cover" src={book.src} alt="" width={book.width} height={book.height} loading="lazy" decoding="async" />
+                <img className="kdp-book-cover" src={book.thumb} alt="" width={book.width} height={book.height} loading="lazy" decoding="async" />
                 <span className="book3d-sheen" />
               </span>
             </span>
@@ -1053,6 +1081,8 @@ function ClientCovers() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={cover.src}
+                  srcSet={`${cover.thumb} 360w, ${cover.src} 800w`}
+                  sizes="(max-width: 590px) 45vw, (max-width: 980px) 44vw, 270px"
                   alt={`${cover.title}${cover.author ? ` by ${cover.author}` : ""}, front cover`}
                   width={cover.width}
                   height={cover.height}
@@ -1092,7 +1122,7 @@ function CoverRiver() {
               <div className="cover-river-group" key={copy}>
                 {row.map((cover) => (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img key={cover.slug} src={cover.src} alt="" width={cover.width} height={cover.height} loading="lazy" decoding="async" />
+                  <img key={cover.slug} src={cover.thumb} alt="" width={cover.width} height={cover.height} loading="lazy" decoding="async" />
                 ))}
               </div>
             ))}
@@ -1251,6 +1281,7 @@ export function ReviewWall() {
 export function PublishingSite() {
   const supportedGenres = useMemo(() => genres.filter((genre) => genre !== "All"), []);
   usePointerDepth();
+  useOffscreenPause();
 
   useEffect(() => {
     const prefetchedRoutes = new Set<string>();

@@ -189,15 +189,13 @@ h1 { max-width: 720px; margin: 0; font-family: var(--font-sans); font-size: clam
 .hero-stage-canvas {
   position: absolute; top: -7%; left: -17%; display: block; width: 134%; height: 112%; opacity: 0; pointer-events: none;
   transition: opacity .7s ease;
-  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%,#000 80%,transparent 100%);
-  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%,#000 80%,transparent 100%);
 }
 .hero-books.is-live .hero-stage-canvas { opacity: 1; }
 .hero-books.is-live .hero-poster { opacity: 0; visibility: hidden; }
 .hero-stage-caption {
   position: absolute; left: 50%; bottom: 14px; z-index: 6; margin: 0; padding: 7px 14px; border: 1px solid rgba(43,74,160,.18);
-  border-radius: 999px; background: rgba(255,255,255,.82); color: var(--muted); font-size: 11px; font-weight: 650;
-  letter-spacing: .02em; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; transform: translateX(-50%); backdrop-filter: blur(8px);
+  border-radius: 999px; background: rgba(255,255,255,.94); color: var(--muted); font-size: 11px; font-weight: 650;
+  letter-spacing: .02em; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; transform: translateX(-50%);
 }
 .hero-stage-caption span { margin-right: 8px; padding-right: 9px; border-right: 1px solid rgba(43,74,160,.22); color: var(--teal-deep); font-weight: 800; }
 @keyframes poster-float {
@@ -207,7 +205,6 @@ h1 { max-width: 720px; margin: 0; font-family: var(--font-sans); font-size: clam
 .hero-books.is-reduced-motion .hero-poster .book3d { animation: none; }
 .published-book {
   position: relative; width: min(260px,100%); aspect-ratio: 1; margin: 0; perspective: 900px; perspective-origin: 50% 42%;
-  filter: drop-shadow(14px 20px 14px rgba(15,17,17,.3));
 }
 .book3d {
   --book-depth: 20px; --book-spine: #1c2542;
@@ -486,7 +483,6 @@ h1 { max-width: 720px; margin: 0; font-family: var(--font-sans); font-size: clam
   .hero-stage-canvas { top: -4%; left: -12%; width: 124%; height: 106%; }
   .hero-poster .published-book { width: min(330px,88%); }
   .hero-rotation-toggle { top: -4px; right: 0; }
-  .published-book { filter: drop-shadow(7px 9px 7px rgba(15,17,17,.28)); }
   .hero-art-backdrop { top: 34px; width: 300px; height: 300px; box-shadow: 18px 18px 0 rgba(157,185,255,.1); }
   .section { padding: 70px 0; }
   .services-grid, .process-list, .genre-grid, .standalone-genre-grid, .platform-list, .form-row { grid-template-columns: 1fr; }
@@ -637,7 +633,6 @@ html[data-season]:not([data-season-dismissed]) .hero-art-backdrop {
   --gradient-a: var(--teal-mid); --gradient-b: #8a5a12;
   background: linear-gradient(100deg,var(--gradient-a) 0%,var(--gradient-b) 45%,var(--gradient-a) 90%) 0 0 / 220% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
-  animation: gradient-drift 9s ease-in-out infinite alternate;
 }
 @keyframes gradient-drift { to { background-position: 100% 0; } }
 
@@ -688,7 +683,9 @@ html[data-season]:not([data-season-dismissed]) .hero-art-backdrop {
   animation: kdp-orbit 26s linear infinite;
 }
 @keyframes kdp-orbit { to { transform: translate(-50%,-50%) rotateX(68deg) rotateZ(360deg); } }
-.kdp-book { position: absolute; display: block; aspect-ratio: 2 / 3; perspective: 900px; filter: drop-shadow(18px 26px 22px rgba(0,0,0,.45)); }
+.kdp-book { position: absolute; display: block; aspect-ratio: 2 / 3; perspective: 900px; }
+/* A painted shadow under each book. A filter here would be redrawn on every frame of the float. */
+.kdp-book::after { content: ""; position: absolute; left: 4%; right: -14%; bottom: -13%; height: 20%; background: radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.5),rgba(0,0,0,0) 68%); pointer-events: none; }
 .kdp-book .book3d { top: 0; left: 0; width: 100%; height: 100%; }
 .kdp-book-cover { inset: 0; z-index: 2; width: 100%; height: 100%; border-radius: 1px 3px 3px 1px; object-fit: cover; transform: translateZ(calc(var(--book-depth) / 2)); }
 .kdp-book-1 { top: 9%; left: 50%; z-index: 3; width: 190px; margin-left: -95px; }
@@ -833,7 +830,7 @@ html[data-season]:not([data-season-dismissed]) .hero-art-backdrop {
 .reviews-ghost-row-2 { animation-name: cover-river-right; animation-duration: 110s; }
 .reviews-ghost-row span { display: flex; }
 .reviews-ghost-row b {
-  padding-right: 80px; color: transparent; font-size: clamp(64px,9vw,136px); font-weight: 800; line-height: 1; letter-spacing: -.045em; white-space: nowrap;
+  padding-right: 64px; color: transparent; font-size: clamp(54px,7vw,104px); font-weight: 800; line-height: 1; letter-spacing: -.045em; white-space: nowrap;
   -webkit-text-stroke: 1.5px rgba(157,185,255,.17);
 }
 .reviews-inner { position: relative; z-index: 1; display: grid; justify-items: center; padding-block: 104px 96px; }
@@ -846,12 +843,12 @@ html[data-season]:not([data-season-dismissed]) .hero-art-backdrop {
   position: relative; grid-area: 1 / 1; align-self: center; justify-self: center; display: flex; flex-direction: column; width: min(640px,100%);
   padding: 54px 46px 32px; border-radius: 24px; background: linear-gradient(180deg,#ffffff,#f6f8ff); color: #14204a;
   box-shadow: 0 0 0 1px rgba(255,255,255,.5) inset, 0 46px 90px rgba(4,9,32,.55), 0 10px 24px rgba(4,9,32,.25);
-  transition: transform .8s cubic-bezier(.2,.75,.2,1), opacity .6s ease, filter .6s ease;
+  transition: transform .8s cubic-bezier(.2,.75,.2,1), opacity .6s ease;
 }
 .review-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 7px; border-radius: 24px 24px 0 0; background: linear-gradient(90deg,#d4a43a,#f6e3a6 40%,#3f6be0); }
 .review-card[data-pos="center"] { z-index: 3; }
-.review-card[data-pos="right"] { z-index: 2; opacity: .55; filter: saturate(.75); transform: translateX(64%) translateZ(-300px) rotateY(-34deg) scale(.9); }
-.review-card[data-pos="left"] { z-index: 2; opacity: .55; filter: saturate(.75); transform: translateX(-64%) translateZ(-300px) rotateY(34deg) scale(.9); }
+.review-card[data-pos="right"] { z-index: 2; opacity: .55; transform: translateX(64%) translateZ(-300px) rotateY(-34deg) scale(.9); }
+.review-card[data-pos="left"] { z-index: 2; opacity: .55; transform: translateX(-64%) translateZ(-300px) rotateY(34deg) scale(.9); }
 .review-card[data-pos="back"] { z-index: 1; opacity: 0; pointer-events: none; transform: translateZ(-620px) scale(.78); }
 .review-card[data-pos="right"]:hover, .review-card[data-pos="left"]:hover { opacity: .8; }
 .review-card-turn { position: absolute; inset: 0; z-index: 2; border: 0; border-radius: inherit; background: none; cursor: pointer; }
@@ -992,4 +989,17 @@ main { position: relative; }
   .page-hero-inner { padding-top: calc(48px + var(--header-h) + var(--greeting-h)); }
   .season-ribbon { width: calc(100% - 24px); max-width: none; border-radius: 16px; }
   .season-ribbon-inner { padding: 8px 44px 8px 14px; }
+}
+
+/* Performance: looping animations pause while their section is off screen
+   (set by useOffscreenPause), and moving rows get their own layer. */
+[data-offscreen], [data-offscreen] *, [data-offscreen] *::before, [data-offscreen] *::after { animation-play-state: paused !important; }
+.service-ribbon-track, .cover-river-row, .reviews-ghost-row { will-change: transform; }
+/* The still hero book: a painted floor shadow (no filter) and a soft fade when the cover changes. */
+.hero-poster .published-book::after { content: ""; position: absolute; left: 16%; right: 2%; bottom: -3%; height: 12%; background: radial-gradient(ellipse at 50% 50%,rgba(15,17,40,.34),rgba(15,17,40,0) 70%); pointer-events: none; }
+.hero-poster .published-book-cover { animation: poster-cover-in .7s ease both; }
+@keyframes poster-cover-in { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 590px) {
+  .review-stage { margin-top: 40px; }
+  .review-stage .review-card { align-self: start; }
 }

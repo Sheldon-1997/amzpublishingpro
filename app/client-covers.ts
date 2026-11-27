@@ -8,6 +8,8 @@ export type ClientCover = {
   author: string;
   spine: string;
   src: string;
+  // 360 pixel wide copy for small placements (shelf on phones, moving band).
+  thumb: string;
   width: number;
   height: number;
 };
@@ -18,6 +20,7 @@ const cover = (slug: string, title: string, author: string, spine: string, heigh
   author,
   spine,
   src: `/client-covers/${slug}.webp`,
+  thumb: `/client-covers/thumb/${slug}.webp`,
   width: 800,
   height,
 });

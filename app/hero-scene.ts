@@ -72,8 +72,8 @@ const MORPH = 4.8;
 const CYCLE = HOLD + MORPH;
 const SWAP_AT = 0.51;
 
-const SHEETS = 26;
-const DUST = 70;
+const SHEETS = 22;
+const DUST = 40;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const span = (value: number, from: number, to: number) => clamp01((value - from) / (to - from));
@@ -177,7 +177,8 @@ export function createHeroScene(options: HeroSceneOptions): HeroSceneHandle | nu
   }
 
   const compact = window.matchMedia("(max-width: 820px)").matches;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compact ? 1.5 : 2));
+  // A modest pixel ratio keeps the scene smooth on laptops and phones.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compact ? 1.25 : 1.5));
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = NeutralToneMapping;
   renderer.toneMappingExposure = 1;
@@ -199,7 +200,7 @@ export function createHeroScene(options: HeroSceneOptions): HeroSceneHandle | nu
   const key = new DirectionalLight(0xfff0d9, 2.6);
   key.position.set(-4.5, 9, 6.5);
   key.castShadow = true;
-  key.shadow.mapSize.set(compact ? 1024 : 2048, compact ? 1024 : 2048);
+  key.shadow.mapSize.set(compact ? 512 : 1024, compact ? 512 : 1024);
   key.shadow.camera.left = -6;
   key.shadow.camera.right = 6;
   key.shadow.camera.top = 7;
@@ -415,6 +416,14 @@ export function createHeroScene(options: HeroSceneOptions): HeroSceneHandle | nu
       shownIndex = wantedIndex;
       dressBook(shownIndex);
       onCoverChange(shownIndex);
+      // Keep only the cover on the book and the one coming next in memory.
+      const upcoming = (shownIndex + 1) % covers.length;
+      for (const [index, texture] of coverTextures) {
+        if (index === shownIndex || index === upcoming) continue;
+        texture.dispose();
+        coverTextures.delete(index);
+        coverRequests.delete(index);
+      }
     }
 
     // Lie back, then rise again with a full turn.
@@ -527,8 +536,42 @@ export function createHeroScene(options: HeroSceneOptions): HeroSceneHandle | nu
   let animationFrame = 0;
   let previous = 0;
 
+  // Slow devices: watch the real gap between animation frames. If the scene
+  // cannot keep up it first drops to a cheaper picture (no shadows, fewer
+  // pixels) and, if that is still too slow, hands back to the still book.
+  let lastTick = 0;
+  let averageGap = 16;
+  let judgeAfter = 0;
+  let quality = 0;
+  const lowerQuality = () => {
+    quality += 1;
+    if (quality === 1) {
+      renderer.setPixelRatio(1);
+      key.castShadow = false;
+      floor.visible = false;
+      resize();
+      return;
+    }
+    stop();
+    onLost();
+  };
+
   const loop = (now: number) => {
     animationFrame = window.requestAnimationFrame(loop);
+    const gap = now - lastTick;
+    lastTick = now;
+    if (gap > 0 && gap < 250) {
+      averageGap += (gap - averageGap) * 0.06;
+      if (now > judgeAfter && averageGap > 36) {
+        averageGap = 16;
+        judgeAfter = now + 2500;
+        lowerQuality();
+        if (!running) return;
+      }
+    }
+    // While the book only turns slowly, every other frame is enough.
+    const presenting = clock - Math.floor(clock / CYCLE) * CYCLE < HOLD;
+    if (presenting && now - previous < 30) return;
     const delta = Math.min(0.1, (now - previous) / 1000);
     previous = now;
     const before = clock;
@@ -547,6 +590,9 @@ export function createHeroScene(options: HeroSceneOptions): HeroSceneHandle | nu
     if (running || !ready || disposed) return;
     running = true;
     previous = performance.now();
+    lastTick = previous;
+    averageGap = 16;
+    judgeAfter = previous + 2500;
     animationFrame = window.requestAnimationFrame(loop);
   };
   const stop = () => {

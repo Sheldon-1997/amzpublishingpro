@@ -65,7 +65,8 @@ export function SeasonEffects() {
     let frame = 0;
     let running = true;
     let last = performance.now();
-    const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+    // One canvas pixel per CSS pixel is plenty for soft particles.
+    const ratio = 1;
     const particles: Particle[] = [];
 
     const spawn = (anywhere: boolean): Particle => {
@@ -96,7 +97,7 @@ export function SeasonEffects() {
       canvas.width = Math.round(width * ratio);
       canvas.height = Math.round(height * ratio);
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      const target = Math.min(64, Math.max(18, Math.round(width / (effect === "snow" ? 26 : 40))));
+      const target = Math.min(34, Math.max(12, Math.round(width / (effect === "snow" ? 40 : 56))));
       while (particles.length < target) particles.push(spawn(true));
       particles.length = target;
     };
@@ -111,7 +112,10 @@ export function SeasonEffects() {
 
     const draw = (now: number) => {
       if (!running) return;
-      const delta = Math.min(0.05, (now - last) / 1000);
+      frame = window.requestAnimationFrame(draw);
+      // About 30 frames a second is enough for drifting particles.
+      if (now - last < 30) return;
+      const delta = Math.min(0.08, (now - last) / 1000);
       last = now;
       context.clearRect(0, 0, width, height);
 
@@ -131,16 +135,12 @@ export function SeasonEffects() {
         context.fillStyle = particle.color;
         if (effect === "snow") {
           context.globalAlpha = 0.92;
-          context.shadowColor = "rgba(110,140,200,.35)";
-          context.shadowBlur = 2;
           context.beginPath();
           context.arc(0, 0, particle.r, 0, Math.PI * 2);
           context.fill();
         } else if (effect === "sparks") {
           context.globalAlpha = 0.35 + 0.55 * Math.abs(Math.sin(particle.phase * 2.2));
           context.rotate(Math.PI / 4);
-          context.shadowColor = particle.color;
-          context.shadowBlur = 8;
           context.fillRect(-particle.r, -particle.r, particle.r * 2, particle.r * 2);
         } else if (effect === "hearts") {
           context.globalAlpha = 0.6;
@@ -160,7 +160,6 @@ export function SeasonEffects() {
         }
         context.restore();
       }
-      frame = window.requestAnimationFrame(draw);
     };
 
     const start = () => {
@@ -169,9 +168,20 @@ export function SeasonEffects() {
       last = performance.now();
       frame = window.requestAnimationFrame(draw);
     };
+    // Particles only run over the top of the page, so reading and scrolling
+    // further down costs nothing.
+    let nearTop = true;
     const onVisibility = () => {
-      if (document.hidden) window.cancelAnimationFrame(frame);
-      else start();
+      window.cancelAnimationFrame(frame);
+      if (!document.hidden && nearTop) start();
+    };
+    const onScroll = () => {
+      const next = window.scrollY < window.innerHeight * 0.9;
+      if (next === nearTop) return;
+      nearTop = next;
+      window.cancelAnimationFrame(frame);
+      if (nearTop) start();
+      else context.clearRect(0, 0, width, height);
     };
     const stop = () => {
       running = false;
@@ -183,9 +193,12 @@ export function SeasonEffects() {
     start();
     window.addEventListener("resize", resize);
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("season:dismissed", stop);
+    onScroll();
     return () => {
       stop();
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("season:dismissed", stop);
