@@ -29,7 +29,12 @@ export const businessFacts = {
 
 // Add a profile here only after the public page exists under this brand and
 // links back to https://amzpublishingpro.com/.
-export const socialProfileUrls: readonly string[] = [];
+export const socialProfileUrls: readonly string[] = [
+  // Facebook page supplied by the owner on 28 November 2026.
+  "https://www.facebook.com/amzbookspublishingpro",
+];
+
+export const facebookPageUrl = socialProfileUrls.find((url) => url.includes("facebook.com/")) ?? "";
 
 export function buildOrganizationStructuredData(
   profileUrls: readonly string[] = socialProfileUrls,

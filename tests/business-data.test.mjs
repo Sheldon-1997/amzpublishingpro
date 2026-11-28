@@ -28,7 +28,7 @@ test("canonical business facts are exact", () => {
 });
 
 test("Organization sameAs contains only controlled public profiles", () => {
-  assert.deepEqual(socialProfileUrls, []);
+  assert.deepEqual(socialProfileUrls, ["https://www.facebook.com/amzbookspublishingpro"]);
   assert.equal(new Set(socialProfileUrls).size, socialProfileUrls.length);
   for (const url of socialProfileUrls) {
     assert.match(
@@ -36,7 +36,7 @@ test("Organization sameAs contains only controlled public profiles", () => {
       /^https:\/\/(?:www\.)?(?:facebook\.com\/|linkedin\.com\/company\/)/,
     );
   }
-  assert.ok(!("sameAs" in buildOrganizationStructuredData()));
+  assert.deepEqual(buildOrganizationStructuredData().sameAs, ["https://www.facebook.com/amzbookspublishingpro"]);
   assert.deepEqual(
     buildOrganizationStructuredData(["https://www.linkedin.com/company/example/"]).sameAs,
     ["https://www.linkedin.com/company/example/"],
@@ -48,14 +48,14 @@ test("Organization data omits sameAs for an empty profile list", () => {
   assert.ok(!("sameAs" in organization));
 });
 
-test("Organization data is truthful and claims no unverified profiles", () => {
+test("Organization data is truthful and lists only the owner's own profile", () => {
   const organization = buildOrganizationStructuredData();
   assert.equal(organization["@type"], "Organization");
   assert.equal(organization["@id"], "https://amzpublishingpro.com/#organization");
   assert.equal(organization.logo, "https://amzpublishingpro.com/og.png");
   assert.equal(organization.telephone, "+19092939645");
   assert.equal(organization.email, "info@amzpublishingpro.com");
-  assert.ok(!("sameAs" in organization));
+  assert.deepEqual(organization.sameAs, ["https://www.facebook.com/amzbookspublishingpro"]);
   assert.ok(!("legalName" in organization));
   assert.ok(!("taxID" in organization));
 });

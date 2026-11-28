@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Native links avoid a Vinext production navigation crash. */
 import { type CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "./BrandLogo";
-import { buildOrganizationStructuredData, businessFacts, ownerClientStatement, ownerFigures } from "./business-data";
+import { buildOrganizationStructuredData, businessFacts, facebookPageUrl, ownerClientStatement, ownerFigures } from "./business-data";
 import { clientCovers } from "./client-covers";
 import { clientReviews } from "./client-reviews";
 import { heroPublishingCovers } from "./hero-publishing-covers";
@@ -680,6 +680,16 @@ export function SiteFooter() {
           <p>Publishing services for independent authors, from manuscript review through final files.</p>
           <p className="footer-trust">{businessFacts.trustStatement}</p>
           <p className="footer-domain">{businessFacts.domain}</p>
+          {facebookPageUrl && (
+            <a className="footer-social" href={facebookPageUrl} target="_blank" rel="noopener noreferrer">
+              <span className="footer-social-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" focusable="false">
+                  <path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              Follow us on Facebook
+            </a>
+          )}
         </div>
         <div>
           <h3>Services</h3>
@@ -705,6 +715,7 @@ export function SiteFooter() {
           <a href={phoneHref}>{phoneDisplay}</a>
           <a href={`mailto:${email}`}>{email}</a>
           <address className="footer-address">{businessAddress}</address>
+          {facebookPageUrl && <a href={facebookPageUrl} target="_blank" rel="noopener noreferrer">Facebook</a>}
           <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms</a>
         </div>

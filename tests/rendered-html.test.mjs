@@ -92,8 +92,10 @@ test("homepage presents one approved service description to people and search en
     "https://amzpublishingpro.com/og.png",
   );
   assert.equal(business.email, "info@amzpublishingpro.com");
-  assert.deepEqual(socialProfileUrls, []);
-  assert.ok(!("sameAs" in business));
+  assert.deepEqual(socialProfileUrls, ["https://www.facebook.com/amzbookspublishingpro"]);
+  assert.deepEqual(business.sameAs, socialProfileUrls);
+  // The footer links to the page as a plain link: no Facebook script or plugin is loaded.
+  assert.match(html, /<a class="footer-social" href="https:\/\/www\.facebook\.com\/amzbookspublishingpro" target="_blank" rel="noopener noreferrer">/);
   assert.ok(!("legalName" in business));
 });
 

@@ -1012,3 +1012,7 @@ main { position: relative; }
 .form-sent p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.65; }
 .form-sent-again { border: 0; background: none; cursor: pointer; padding: 0; }
 @keyframes form-sent-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+/* Footer link to the Facebook page. */
+.footer-social { display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; padding: 9px 18px 9px 9px; border: 1px solid rgba(236,199,102,.5); border-radius: 999px; color: var(--paper); font-size: 13.5px; font-weight: 750; transition: background .25s, border-color .25s, transform .25s; }
+.footer-social:hover, .footer-social:focus-visible { border-color: #ecc766; background: rgba(236,199,102,.14); transform: translateY(-2px); }
+.footer-social-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,#ecc766,#d4a43a); color: #14204a; }
