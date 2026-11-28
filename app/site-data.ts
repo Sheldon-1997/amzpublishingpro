@@ -262,7 +262,7 @@ const corePages: ContentPageRecord[] = [
     canonical: "/privacy",
     eyebrow: "Privacy",
     title: "Privacy policy.",
-    description: `Effective November 27, 2026. This policy explains what information ${businessFacts.name} collects, how it is used, and the choices you have when you visit this website, contact us, or respond to one of our advertisements.`,
+    description: `Effective November 28, 2026. This policy explains what information ${businessFacts.name} collects, how it is used, and the choices you have when you visit this website, contact us, or respond to one of our advertisements.`,
     sections: [
       { title: "Who we are", paragraphs: [`${businessFacts.name} provides publishing services for independent authors and is responsible for the information described in this policy. Our business address is ${businessFacts.address.formatted}. Privacy questions can be sent to ${businessFacts.email} or raised by phone at ${businessFacts.phone.display}.`] },
       { title: "What this policy covers", paragraphs: [`This policy applies to ${businessFacts.domain}, to inquiries sent to us by email, phone, or message, and to information you send us through an advertisement or lead form on Facebook, Instagram, or a search platform. Work on a client project is also covered by the signed project agreement.`] },

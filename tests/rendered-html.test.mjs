@@ -319,7 +319,7 @@ test("contact and legal pages publish the current business address and advertisi
     }
 
     if (route === "/privacy") {
-      assert.match(html, /Effective November 27, 2026/);
+      assert.match(html, /Effective November 28, 2026/);
       assert.match(html, />Advertising</);
       assert.match(html, /does not currently use the Meta Pixel, Conversions API, analytics cookies, or advertising cookies/);
       assert.match(html, /Any cookie set for that purpose is strictly necessary/);
