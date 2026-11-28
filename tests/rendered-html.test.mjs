@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { socialProfileUrls } from "../app/business-data.ts";
+import { metaDomainVerification, metaPixelId, socialProfileUrls } from "../app/business-data.ts";
 
 let workerPromise;
 
@@ -113,6 +113,7 @@ test("every canonical page aligns document, Open Graph, and X card metadata", as
     "/about",
     "/portfolio",
     "/reviews",
+    "/refund-and-cancellation",
     "/genres",
     "/how-it-works",
     "/resources",
@@ -321,8 +322,16 @@ test("contact and legal pages publish the current business address and advertisi
     if (route === "/privacy") {
       assert.match(html, /Effective November 28, 2026/);
       assert.match(html, />Advertising</);
-      assert.match(html, /does not currently use the Meta Pixel, Conversions API, analytics cookies, or advertising cookies/);
-      assert.match(html, /Any cookie set for that purpose is strictly necessary/);
+      // The policy wording always follows whether a pixel ID is configured.
+      if (metaPixelId) {
+        assert.match(html, /uses the Meta Pixel, an advertising measurement tool from Meta, only after you choose Accept/);
+        assert.match(html, /shared with Meta for cross context behavioral advertising/);
+        assert.match(html, /Global Privacy Control/);
+      } else {
+        assert.match(html, /does not currently use the Meta Pixel, Conversions API, analytics cookies, or advertising cookies/);
+        assert.match(html, /Any cookie set for that purpose is strictly necessary/);
+        assert.match(html, /We do not sell personal information and we do not share it for cross context behavioral advertising/);
+      }
       assert.doesNotMatch(html, /__cf_bm/);
       // Sections advertisers and their reviewers look for.
       for (const heading of ["Who we are", "Information you choose to provide", "How information is used", "How information is shared", "Retention", "Your choices", "How to request deletion of your data", "Children"]) {
@@ -331,6 +340,7 @@ test("contact and legal pages publish the current business address and advertisi
       assert.match(html, /If you submit a lead form on Facebook or Instagram/);
       assert.match(html, /We do not sell personal information/);
       assert.match(html, /info@amzpublishingpro\.com/);
+      assert.match(html, /href="\/refund-and-cancellation"/);
     }
   }
 });
@@ -363,7 +373,7 @@ test("homepage hero is a 3D book stage with a still fallback", async () => {
 
   assert.match(
     html,
-    /id="hero-publishing-portal"[^>]*role="region"[^>]*data-cover-count="12"[^>]*data-cover-kind="client"/,
+    /id="hero-publishing-portal"[^>]*role="region"[^>]*data-cover-count="11"[^>]*data-cover-kind="client"/,
   );
   assert.match(html, /data-visual="book-studio"/);
   assert.match(html, /id="hero-publishing-motion"/);
@@ -377,7 +387,7 @@ test("homepage hero is a 3D book stage with a still fallback", async () => {
   assert.match(html, /class="hero-stage-caption"[^>]*><span>Client project<\/span>/);
   assert.match(
     html,
-    /A hardcover book turns slowly in the light\. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next book\. The sequence repeats across <!-- -->twelve<!-- --> <!-- -->covers designed for our authors<!-- -->\./,
+    /A hardcover book turns slowly in the light\. It then lies back and opens, its pages lift into the air and settle again, and it closes as the next book\. The sequence repeats across <!-- -->eleven<!-- --> <!-- -->covers designed for our authors<!-- -->\./,
   );
   assert.doesNotMatch(html, /hero-publishing\/|publishing-cabinet|cabinet-/);
 });
@@ -492,6 +502,30 @@ test("the inquiry form sends directly to the business inbox and never loses an i
   assert.doesNotMatch(home, /Prepare My Inquiry|prepares an email/);
   assert.match(privacy, />Inquiry form</);
   assert.match(privacy, /passed to FormSubmit, a form delivery service/);
+});
+
+test("the pixel never loads without consent and the refund policy is published", async () => {
+  const consent = await readFile(new URL("../app/AdConsent.tsx", import.meta.url), "utf8");
+  const home = await (await render("/")).text();
+  const refund = await (await render("/refund-and-cancellation")).text();
+
+  // The pixel script is only ever injected from loadPixel(), which runs after Accept.
+  assert.match(consent, /if \(!metaPixelId \|\| window\.fbq\) return;/);
+  assert.match(consent, /if \(choice === "granted" && !privacySignal\) loadPixel\(\);/);
+  assert.match(consent, /navigator\.globalPrivacyControl === true/);
+  assert.doesNotMatch(home, /connect\.facebook\.net/, "no pixel script in the served page");
+  if (metaDomainVerification) {
+    assert.ok(home.includes(`<meta name="facebook-domain-verification" content="${metaDomainVerification}"`));
+  } else {
+    assert.doesNotMatch(home, /facebook-domain-verification/);
+  }
+
+  assert.match(refund, /Refund and cancellation policy\./);
+  for (const heading of ["Before you commission work", "Requesting a cancellation or refund", "Work in progress and outside costs", "Refund arrangements"]) {
+    assert.ok(refund.includes(`>${heading}<`), `refund policy has "${heading}"`);
+  }
+  assert.match(refund, /does not advertise a universal refund deadline/);
+  assert.doesNotMatch(home, /Sacred Touch|sacred-touch/i, "the removed cover is gone from the page");
 });
 
 test("the figure bar shows exactly the owner's figures", async () => {
@@ -686,6 +720,7 @@ test("public canonical routes return successful HTML responses", async () => {
     "/services",
     "/portfolio",
     "/reviews",
+    "/refund-and-cancellation",
     "/genres",
     "/how-it-works",
     "/resources",
@@ -710,6 +745,7 @@ test("every public route discloses the same phone number", async () => {
     "/services",
     "/portfolio",
     "/reviews",
+    "/refund-and-cancellation",
     "/genres",
     "/how-it-works",
     "/resources",
@@ -749,7 +785,7 @@ test("brand preview is a compact AMZ Publishing Pro 1200 by 630 PNG", async () =
 test("no page carries the previous brand or presents platform names as its own", async () => {
   const sitemap = await (await render("/sitemap.xml")).text();
   const routes = [...sitemap.matchAll(/<loc>https:\/\/amzpublishingpro\.com([^<]*)<\/loc>/g)].map((match) => match[1] || "/");
-  assert.equal(routes.length, 22, "the sitemap lists the homepage and 21 content pages");
+  assert.equal(routes.length, 23, "the sitemap lists the homepage and 22 content pages");
   for (const route of routes) {
     const response = await render(route);
     assert.equal(response.status, 200, `${route} should return 200`);

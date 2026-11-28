@@ -35,7 +35,6 @@ export const clientCovers: readonly ClientCover[] = [
   cover("the-season-of-divine-acceleration", "The Season of Divine Acceleration", "O.J. Swanigan", "#0f2f7a"),
   cover("pheenys-big-new-home", "Pheeny's Big New Home", "Madison Sturm", "#4f9a9c", 1208),
   cover("universal-mind-and-the-truth", "Universal Mind and the Truth of \"The Declaration of Independence\"", "James Yi-Sian Shieh", "#6a2a1c"),
-  cover("sacred-touch-for-couples", "Sacred Touch for Couples", "Ilona Malygin", "#2a0f24", 990),
   cover("the-tide-of-injustice", "The Tide of Injustice", "Jamie Desper", "#14181c"),
   cover("the-beginning-to-the-book-of-spells", "The Beginning to the Book of Spells", "Darktamein Knight", "#15171c", 1400),
 ];

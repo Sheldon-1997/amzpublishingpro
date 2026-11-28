@@ -73,3 +73,12 @@ export const ownerFigures = [
 ] as const;
 
 export const ownerClientStatement = "Partnered with 200+ clients across local, national, and global markets.";
+
+// Meta (Facebook) advertising setup. Both stay empty until the owner's Meta
+// Business account supplies them.
+//   metaPixelId: turns on the consent notice and, after Accept, the pixel.
+//   metaDomainVerification: the code from Business settings > Domains.
+// Setting metaPixelId also switches the Privacy Policy to its "pixel in use"
+// wording (see app/site-data.ts), so the two can never disagree.
+export const metaPixelId = "";
+export const metaDomainVerification = "";

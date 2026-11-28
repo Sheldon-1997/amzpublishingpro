@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-html-link-for-pages -- Native links avoid a Vinext production navigation crash. */
 import { type CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AdChoicesLink, leadSentEvent } from "./AdConsent";
 import { BrandLogo } from "./BrandLogo";
 import { buildOrganizationStructuredData, businessFacts, facebookPageUrl, ownerClientStatement, ownerFigures } from "./business-data";
 import { clientCovers } from "./client-covers";
@@ -505,6 +506,8 @@ function ProjectInquiryForm({ modal = false }: { modal?: boolean }) {
 
     if (delivered) {
       setState("sent");
+      // Lets advertising measurement (if the visitor accepted it) count the inquiry.
+      window.dispatchEvent(new Event(leadSentEvent));
       return;
     }
 
@@ -718,6 +721,8 @@ export function SiteFooter() {
           {facebookPageUrl && <a href={facebookPageUrl} target="_blank" rel="noopener noreferrer">Facebook</a>}
           <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms</a>
+          <a href="/refund-and-cancellation">Refund &amp; Cancellation</a>
+          <AdChoicesLink />
         </div>
       </div>
       <div className="footer-bottom">

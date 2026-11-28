@@ -12,7 +12,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 
 | Item | State |
 | --- | --- |
-| Source rebrand | Done, 48 tests pass on a fresh build |
+| Source rebrand | Done, 49 tests pass on a fresh build |
 | GitHub repository | `Sheldon-1997/amzpublishingpro` (public) |
 | Live site | Published with GitHub Pages at https://amzpublishingpro.com/ on 27 November 2026 |
 | HTTPS | Certificate issued and "Enforce HTTPS" is on; `http` and `www` redirect to `https://amzpublishingpro.com` |
@@ -31,7 +31,7 @@ structured data, sitemap, colour palette, and cover library were replaced.
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # local preview
-pnpm test         # production build + 48 tests
+pnpm test         # production build + 49 tests
 pnpm lint
 ```
 
@@ -43,7 +43,7 @@ dependencies as part of unrelated work.
 - `app/business-data.ts` — the single record of brand name, domain, email,
   phone, address, trust wording, and Organization structured data. Change the
   phone number or email here and nowhere else.
-- `app/site-data.ts` — services and the 21 content pages (including Terms and
+- `app/site-data.ts` — services and the 22 content pages (including Terms and
   Privacy).
 - `app/PublishingSite.tsx` — homepage, header, footer, gallery, inquiry form,
   hero stage, client covers shelf, review deck.
@@ -147,7 +147,7 @@ recolour "PRO". The pack's favicon and 1200x630 share image are in `public/`.
 
 ## Client covers and reviews
 
-`app/client-covers.ts` lists covers designed for clients (12 at present). Only
+`app/client-covers.ts` lists covers designed for clients (11 at present). Only
 the front panel is published, never the back-cover text, at the artwork's own
 proportions (800 pixels wide). Add a cover only when its author has agreed to
 it being shown. One entry puts a cover in four places: the 3D hero book, the
@@ -223,10 +223,16 @@ The sha256 values in `app/cover-catalog.ts` must then be updated to match.
   advertising. It covers inquiries, lead forms, sharing, retention, rights,
   and how to request deletion. Have it reviewed by a lawyer for the states
   and countries you advertise in.
-- The policy states that the site uses no Meta Pixel, analytics, or
-  advertising cookies, and a test enforces that no such script is present.
-  Before adding a pixel or tag, update the "Website technology and cookies"
-  and "Advertising" sections and that test in the same change.
+- Meta Pixel: set `metaPixelId` in `app/business-data.ts`. That one value
+  turns on the "Advertising choices" notice (`app/AdConsent.tsx`), loads the
+  pixel only after Accept (never with a Global Privacy Control signal), counts
+  a `Lead` when the inquiry form is delivered, and switches the Privacy Policy
+  to its "pixel in use" wording. While it is empty none of this runs.
+- Meta domain verification: put the code from Business settings > Domains in
+  `metaDomainVerification`; it is published as a meta tag in every page.
+- `/refund-and-cancellation` follows the owner's existing policy on his other
+  publishing site: terms are set in each project agreement, no universal
+  refund deadline is advertised.
 - Search basics are in place: one canonical URL per page, `sitemap.xml`,
   `robots.txt`, Open Graph and X card tags, and Organization structured data.
 

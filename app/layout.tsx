@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { businessFacts } from "./business-data";
+import { AdConsent } from "./AdConsent";
+import { businessFacts, metaDomainVerification } from "./business-data";
 import { SeasonEffects } from "./SeasonLayer";
 import { seasonBootstrapScript } from "./seasons";
 import "./globals.css";
@@ -41,12 +42,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     // client <html> attributes are allowed to differ.
     <html lang="en" suppressHydrationWarning>
       <head>
+        {metaDomainVerification ? <meta name="facebook-domain-verification" content={metaDomainVerification} /> : null}
         <script id="season-bootstrap" dangerouslySetInnerHTML={{ __html: seasonBootstrapScript() }} />
       </head>
       <body>
         <div className="scroll-progress" aria-hidden="true" />
         {children}
         <SeasonEffects />
+        <AdConsent />
       </body>
     </html>
   );
